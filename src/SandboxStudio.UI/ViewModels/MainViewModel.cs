@@ -52,17 +52,8 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
+            await _repository.EnsureDefaultPresetsAsync();
             var items = await _repository.GetAllAsync();
-            if (items.Count == 0)
-            {
-                // Seed default presets on first run
-                var presets = _repository.GetDefaultPresets();
-                foreach (var preset in presets)
-                {
-                    await _repository.SaveAsync(preset);
-                }
-                items = await _repository.GetAllAsync();
-            }
 
             Profiles.Clear();
             foreach (var item in items)

@@ -1,14 +1,15 @@
-name: Release Packaging
+name: Package Preview
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  package:
+  package-preview:
     runs-on: windows-latest
-    name: Package Release
+    name: Package Win-x64 Preview
 
     steps:
       - name: Checkout Repository
@@ -28,15 +29,14 @@ jobs:
           -p:PublishSingleFile=false
           -o ./dist
 
-      - name: Create Release Archive
+      - name: Create Preview Archive
         shell: pwsh
-        run: Compress-Archive -Path ./dist/* -DestinationPath ./SandboxStudio-win-x64.zip
+        run: Compress-Archive -Path ./dist/* -DestinationPath ./SandboxStudio-win-x64-preview.zip
 
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v2
+      - name: Upload Preview Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: SandboxStudio-win-x64.zip
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: SandboxStudio-win-x64-preview
+          path: SandboxStudio-win-x64-preview.zip
+          if-no-files-found: error
+          retention-days: 14

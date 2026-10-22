@@ -26,6 +26,9 @@ public sealed partial class MainWindow : Window
 
         // Check Sandbox availability
         SandboxStatusInfoBar.IsOpen = !ViewModel.IsSandboxInstalled;
+        SandboxEngineStatus.Text = ViewModel.IsSandboxInstalled
+            ? "Windows Sandbox Engine Ready"
+            : "Windows Sandbox Engine Unavailable";
 
         // Auto-load profiles on startup
         _ = ViewModel.LoadProfilesAsync();
@@ -59,6 +62,21 @@ public sealed partial class MainWindow : Window
         {
             try
             {
+                var dialog = new ContentDialog
+                {
+                    Title = "Delete profile?",
+                    Content = $"Delete '{profile.Name}'? This action cannot be undone.",
+                    PrimaryButtonText = "Delete",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = Content.XamlRoot
+                };
+
+                if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                {
+                    return;
+                }
+
                 await ViewModel.DeleteProfileAsync(profile);
             }
             catch (Exception ex)

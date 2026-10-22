@@ -47,7 +47,7 @@
                     IsOpen="False"
                     Severity="Warning"
                     Title="Windows Sandbox Not Detected"
-                    Message="Windows Sandbox is not enabled on this host. You can still create and export .wsb configurations." />
+                    Message="Windows Sandbox is not enabled on this host. Profiles can be created, but launching them requires Windows Sandbox." />
 
                 <!-- Profiles ItemsControl -->
                 <ItemsRepeater x:Name="ProfilesRepeater" ItemsSource="{x:Bind ViewModel.Profiles, Mode=OneWay}">
@@ -104,7 +104,7 @@
         <Border Grid.Row="2" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="24,6">
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Grid.Column="0" Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="Windows Sandbox Engine Ready" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                <TextBlock x:Name="SandboxEngineStatus" Grid.Column="1" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
             </Grid>
         </Border>
     </Grid>

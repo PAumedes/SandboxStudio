@@ -28,6 +28,11 @@ public interface IProfileRepository
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Ensures the built-in presets have been initialized for a new profile store.
+    /// </summary>
+    Task EnsureDefaultPresetsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Generates built-in curated preset profiles.
     /// </summary>
     IReadOnlyList<SandboxProfile> GetDefaultPresets();

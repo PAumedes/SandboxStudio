@@ -43,6 +43,6 @@ flowchart TD
     Integration --> Unit[Unit Tests: Serialization, Validation, Repository, Launcher]
 ```
 
-* **Unit Tests (`tests/SandboxStudio.Tests.Unit`)**: Exhaustive behavioral assertions using FluentAssertions and Moq.
+* **Unit Tests (`tests/SandboxStudio.Tests.Unit`)**: Behavior-focused assertions using FluentAssertions and Moq.
 * **Integration Tests (`tests/SandboxStudio.Tests.Integration`)**: Disk persistence and round-trip fidelity against real file systems.
 * **Smoke Tests (`tests/SandboxStudio.Tests.Smoke`)**: Fast sanity verification of container registration and schema contracts.

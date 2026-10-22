@@ -72,6 +72,48 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
     }
 
     /// <inheritdoc/>
+    public async Task EnsureDefaultPresetsAsync(CancellationToken cancellationToken = default)
+    {
+        var initializedFilePath = Path.Combine(_profilesDirectory, ".initialized");
+        var initializingFilePath = Path.Combine(_profilesDirectory, ".initializing");
+
+        await _lock.WaitAsync(cancellationToken);
+        try
+        {
+            if (File.Exists(initializedFilePath))
+            {
+                return;
+            }
+
+            if (!File.Exists(initializingFilePath))
+            {
+                if (Directory.GetFiles(_profilesDirectory, "*.json").Length > 0)
+                {
+                    await File.WriteAllTextAsync(initializedFilePath, string.Empty, cancellationToken);
+                    return;
+                }
+
+                await File.WriteAllTextAsync(initializingFilePath, string.Empty, cancellationToken);
+            }
+
+            foreach (var preset in GetDefaultPresets())
+            {
+                var filePath = GetProfileFilePath(preset.Id);
+                if (!File.Exists(filePath))
+                {
+                    await WriteProfileAsync(preset, cancellationToken);
+                }
+            }
+
+            File.Move(initializingFilePath, initializedFilePath);
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<SandboxProfile?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var filePath = GetProfileFilePath(id);
@@ -102,31 +144,13 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        var filePath = GetProfileFilePath(profile.Id);
-        var tempFilePath = $"{filePath}.tmp";
-
-        var json = JsonSerializer.Serialize(profile, JsonOptions);
-
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            await File.WriteAllTextAsync(tempFilePath, json, cancellationToken);
-            File.Move(tempFilePath, filePath, overwrite: true);
+            await WriteProfileAsync(profile, cancellationToken);
         }
         finally
         {
-            if (File.Exists(tempFilePath))
-            {
-                try
-                {
-                    File.Delete(tempFilePath);
-                }
-                catch
-                {
-                    // Best effort cleanup
-                }
-            }
-
             _lock.Release();
         }
     }
@@ -215,6 +239,33 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
     }
 
     private string GetProfileFilePath(Guid id) => Path.Combine(_profilesDirectory, $"{id:N}.json");
+
+    private async Task WriteProfileAsync(SandboxProfile profile, CancellationToken cancellationToken)
+    {
+        var filePath = GetProfileFilePath(profile.Id);
+        var tempFilePath = $"{filePath}.tmp";
+        var json = JsonSerializer.Serialize(profile, JsonOptions);
+
+        try
+        {
+            await File.WriteAllTextAsync(tempFilePath, json, cancellationToken);
+            File.Move(tempFilePath, filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(tempFilePath))
+            {
+                try
+                {
+                    File.Delete(tempFilePath);
+                }
+                catch
+                {
+                    // Best effort cleanup
+                }
+            }
+        }
+    }
 
     /// <inheritdoc/>
     public void Dispose()
