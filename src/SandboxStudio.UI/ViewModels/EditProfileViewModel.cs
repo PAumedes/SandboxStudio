@@ -1,0 +1,130 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Serialization;
+using SandboxStudio.Core.Storage;
+using SandboxStudio.Core.Validation;
+
+namespace SandboxStudio.UI.ViewModels;
+
+/// <summary>
+/// ViewModel controlling the creation and detailed editing of a Sandbox profile.
+/// </summary>
+public partial class EditProfileViewModel : ObservableObject
+{
+    private readonly IProfileRepository _repository;
+    private readonly IWsbValidator _validator;
+    private readonly IWsbSerializer _serializer;
+
+    [ObservableProperty]
+    public partial SandboxProfile Profile { get; set; } = new();
+
+    [ObservableProperty]
+    public partial ObservableCollection<WsbMappedFolder> MappedFolders { get; set; } = new();
+
+    [ObservableProperty]
+    public partial string? ValidationSummary { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasErrors { get; set; }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="EditProfileViewModel"/>.
+    /// </summary>
+    public EditProfileViewModel(
+        IProfileRepository repository,
+        IWsbValidator validator,
+        IWsbSerializer serializer)
+    {
+        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+        _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+    }
+
+    /// <summary>
+    /// Sets the active profile for editing and populates observable fields.
+    /// </summary>
+    public void SetProfile(SandboxProfile profile)
+    {
+        Profile = profile;
+        MappedFolders.Clear();
+        foreach (var folder in profile.Configuration.MappedFolders)
+        {
+            MappedFolders.Add(folder);
+        }
+        Validate();
+    }
+
+    /// <summary>
+    /// Adds a new mapped folder.
+    /// </summary>
+    [RelayCommand]
+    public void AddMappedFolder()
+    {
+        var newFolder = new WsbMappedFolder
+        {
+            HostFolder = @"C:\",
+            IsReadOnly = true
+        };
+        MappedFolders.Add(newFolder);
+        Profile.Configuration.MappedFolders.Add(newFolder);
+        Validate();
+    }
+
+    /// <summary>
+    /// Removes a mapped folder.
+    /// </summary>
+    [RelayCommand]
+    public void RemoveMappedFolder(WsbMappedFolder? folder)
+    {
+        if (folder is null)
+        {
+            return;
+        }
+
+        MappedFolders.Remove(folder);
+        Profile.Configuration.MappedFolders.Remove(folder);
+        Validate();
+    }
+
+    /// <summary>
+    /// Validates the current configuration against sandbox specifications.
+    /// </summary>
+    [RelayCommand]
+    public void Validate()
+    {
+        var result = _validator.Validate(Profile.Configuration);
+        HasErrors = !result.IsValid;
+
+        if (HasErrors)
+        {
+            ValidationSummary = string.Join("; ", result.Messages.Select(m => $"{m.PropertyName}: {m.Message}"));
+        }
+        else
+        {
+            ValidationSummary = "Configuration is valid.";
+        }
+    }
+
+    /// <summary>
+    /// Saves the current profile to persistent storage.
+    /// </summary>
+    [RelayCommand]
+    public async Task<bool> SaveAsync()
+    {
+        Validate();
+        if (HasErrors)
+        {
+            return false;
+        }
+
+        await _repository.SaveAsync(Profile);
+        return true;
+    }
+
+    /// <summary>
+    /// Exports the configuration as raw .wsb XML string.
+    /// </summary>
+    public string ExportXml() => _serializer.Serialize(Profile.Configuration);
+}

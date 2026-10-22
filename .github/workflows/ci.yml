@@ -1,0 +1,40 @@
+name: CI Build & Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    name: Build & Test Solution
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            9.0.x
+
+      - name: Restore Dependencies
+        run: dotnet restore SandboxStudio.sln
+
+      - name: Build Solution
+        run: dotnet build SandboxStudio.sln --configuration Release --no-restore
+
+      - name: Execute Unit Tests
+        run: dotnet test tests/SandboxStudio.Tests.Unit/SandboxStudio.Tests.Unit.csproj --configuration Release --no-build --logger "trx;LogFileName=unit-tests.trx" --collect:"XPlat Code Coverage"
+
+      - name: Execute Integration Tests
+        run: dotnet test tests/SandboxStudio.Tests.Integration/SandboxStudio.Tests.Integration.csproj --configuration Release --no-build --logger "trx;LogFileName=integration-tests.trx"
+
+      - name: Execute Smoke Tests
+        run: dotnet test tests/SandboxStudio.Tests.Smoke/SandboxStudio.Tests.Smoke.csproj --configuration Release --no-build --logger "trx;LogFileName=smoke-tests.trx"
