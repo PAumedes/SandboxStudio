@@ -17,9 +17,11 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
     private readonly string _profilesDirectory;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private bool _disposed;
+    private bool _directoryEnsured;
 
     /// <summary>
     /// Initializes a new instance with a specified or default storage directory.
+    /// The storage directory is created lazily on first use.
     /// </summary>
     /// <param name="storageDirectory">Optional custom directory. Defaults to %LocalAppData%/SandboxStudio/Profiles.</param>
     public JsonProfileRepository(string? storageDirectory = null)
@@ -28,11 +30,6 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SandboxStudio",
             "Profiles");
-
-        if (!Directory.Exists(_profilesDirectory))
-        {
-            Directory.CreateDirectory(_profilesDirectory);
-        }
     }
 
     /// <inheritdoc/>
@@ -41,6 +38,7 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
         await _lock.WaitAsync(cancellationToken);
         try
         {
+            EnsureStorageDirectory();
             var files = Directory.GetFiles(_profilesDirectory, "*.json");
             var profiles = new List<SandboxProfile>();
 
@@ -55,7 +53,7 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
                         profiles.Add(profile);
                     }
                 }
-                catch
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     // Ignore corrupted individual files to preserve application availability
                 }
@@ -80,6 +78,8 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
         await _lock.WaitAsync(cancellationToken);
         try
         {
+            EnsureStorageDirectory();
+
             if (File.Exists(initializedFilePath))
             {
                 return;
@@ -105,7 +105,14 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
                 }
             }
 
-            File.Move(initializingFilePath, initializedFilePath);
+            try
+            {
+                File.Move(initializingFilePath, initializedFilePath);
+            }
+            catch (IOException) when (File.Exists(initializedFilePath))
+            {
+                // A concurrent process completed initialization first; treat as initialized.
+            }
         }
         finally
         {
@@ -132,6 +139,10 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
         catch (JsonException)
         {
             return null; // Return null if file is corrupt rather than crashing caller
+        }
+        catch (FileNotFoundException)
+        {
+            return null; // File was deleted between the existence check and the read
         }
         finally
         {
@@ -240,11 +251,22 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
 
     private string GetProfileFilePath(Guid id) => Path.Combine(_profilesDirectory, $"{id:N}.json");
 
+    private void EnsureStorageDirectory()
+    {
+        if (!_directoryEnsured)
+        {
+            Directory.CreateDirectory(_profilesDirectory);
+            _directoryEnsured = true;
+        }
+    }
+
     private async Task WriteProfileAsync(SandboxProfile profile, CancellationToken cancellationToken)
     {
         var filePath = GetProfileFilePath(profile.Id);
-        var tempFilePath = $"{filePath}.tmp";
+        var tempFilePath = $"{filePath}.{Guid.NewGuid():N}.tmp";
         var json = JsonSerializer.Serialize(profile, JsonOptions);
+
+        EnsureStorageDirectory();
 
         try
         {

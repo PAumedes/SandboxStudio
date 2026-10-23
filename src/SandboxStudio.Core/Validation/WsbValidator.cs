@@ -7,7 +7,7 @@ namespace SandboxStudio.Core.Validation;
 /// </summary>
 public sealed class WsbValidator : IWsbValidator
 {
-    private static readonly HashSet<string> ValidTriStates = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> ValidTriStates = new(StringComparer.Ordinal)
     {
         "Default",
         "Enable",

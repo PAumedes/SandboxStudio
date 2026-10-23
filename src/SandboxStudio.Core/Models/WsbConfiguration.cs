@@ -75,9 +75,9 @@ public sealed class WsbConfiguration
     public bool ShouldSerializeMappedFolders() => MappedFolders.Count > 0;
 
     /// <summary>
-    /// Convenience property to determine whether MemoryInMB should be serialized if null or invalid.
+    /// Convenience property to determine whether MemoryInMB should be serialized when a value is set.
     /// </summary>
-    public bool ShouldSerializeMemoryInMB() => MemoryInMB.HasValue && MemoryInMB.Value > 0;
+    public bool ShouldSerializeMemoryInMB() => MemoryInMB.HasValue;
 
     /// <summary>Determines whether VGpu should be serialized.</summary>
     public bool ShouldSerializeVGpu() => !string.IsNullOrWhiteSpace(VGpu);

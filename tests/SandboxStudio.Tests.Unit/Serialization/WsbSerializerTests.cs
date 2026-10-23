@@ -128,6 +128,24 @@ public sealed class WsbSerializerTests
         act.Should().Throw<ArgumentException>();
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void Serialize_WhenMemoryIsSetToNonPositiveValue_EmitsValueForValidatorToReject(int memoryMb)
+    {
+        // Arrange - serializer stays faithful to the model; validity is the validator's call
+        var config = new WsbConfiguration
+        {
+            MemoryInMB = memoryMb
+        };
+
+        // Act
+        var xml = _sut.Serialize(config);
+
+        // Assert
+        xml.Should().Contain($"<MemoryInMB>{memoryMb}</MemoryInMB>");
+    }
+
     [Fact]
     public void Serialize_WhenMappedFolderHasEmptySandboxFolder_OmitsSandboxFolderElement()
     {

@@ -11,10 +11,14 @@ namespace SandboxStudio.Core.Execution;
 /// </summary>
 public sealed class SandboxLauncher : ISandboxLauncher
 {
+    private static readonly TimeSpan TempFileMaxAge = TimeSpan.FromDays(1);
+
     private readonly IWsbSerializer _serializer;
     private readonly IWsbValidator _validator;
     private readonly IProfileRepository? _profileRepository;
     private readonly string _tempDirectory;
+    private readonly Func<ProcessStartInfo, Process?> _processStarter;
+    private readonly Func<bool> _sandboxAvailability;
 
     private static readonly string WindowsSandboxExePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.System),
@@ -27,21 +31,22 @@ public sealed class SandboxLauncher : ISandboxLauncher
         IWsbSerializer serializer,
         IWsbValidator validator,
         IProfileRepository? profileRepository = null,
-        string? tempDirectory = null)
+        string? tempDirectory = null,
+        Func<ProcessStartInfo, Process?>? processStarter = null,
+        Func<bool>? sandboxAvailability = null)
     {
         _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _profileRepository = profileRepository;
         _tempDirectory = tempDirectory ?? Path.Combine(Path.GetTempPath(), "SandboxStudio", "Runs");
+        _processStarter = processStarter ?? Process.Start;
+        _sandboxAvailability = sandboxAvailability ?? (() => File.Exists(WindowsSandboxExePath));
 
-        if (!Directory.Exists(_tempDirectory))
-        {
-            Directory.CreateDirectory(_tempDirectory);
-        }
+        CleanupStaleRunFiles();
     }
 
     /// <inheritdoc/>
-    public bool IsSandboxAvailable() => File.Exists(WindowsSandboxExePath);
+    public bool IsSandboxAvailable() => _sandboxAvailability();
 
     /// <inheritdoc/>
     public async Task<SandboxLaunchResult> LaunchAsync(WsbConfiguration configuration, CancellationToken cancellationToken = default)
@@ -55,6 +60,11 @@ public sealed class SandboxLauncher : ISandboxLauncher
             return SandboxLaunchResult.Failure($"Validation failed: {firstError.PropertyName} - {firstError.Message}");
         }
 
+        if (!IsSandboxAvailable())
+        {
+            return SandboxLaunchResult.Failure("Windows Sandbox is not installed or enabled on this host.");
+        }
+
         var runId = Guid.NewGuid();
         var tempFilePath = Path.Combine(_tempDirectory, $"Sandbox_{runId:N}.wsb");
 
@@ -64,24 +74,27 @@ public sealed class SandboxLauncher : ISandboxLauncher
 
             var startInfo = new ProcessStartInfo
             {
-                FileName = tempFilePath,
-                UseShellExecute = true
+                FileName = WindowsSandboxExePath,
+                Arguments = $"\"{tempFilePath}\"",
+                UseShellExecute = false
             };
 
-            var process = Process.Start(startInfo);
-            int? processId = null;
-            try
+            int? processId;
+            using (var process = _processStarter(startInfo))
             {
-                processId = process?.Id;
-            }
-            catch (InvalidOperationException)
-            {
-                // Process ID is not always accessible when ShellExecute launches an associated document or elevated process
+                try
+                {
+                    processId = process?.Id;
+                }
+                catch (InvalidOperationException)
+                {
+                    processId = null;
+                }
             }
 
             return SandboxLaunchResult.Success(processId, tempFilePath);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return SandboxLaunchResult.Failure($"Failed to launch Windows Sandbox: {ex.Message}");
         }
@@ -102,7 +115,7 @@ public sealed class SandboxLauncher : ISandboxLauncher
                 {
                     await _profileRepository.SaveAsync(profile, cancellationToken);
                 }
-                catch
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     // Profile launch succeeded; repository update failure should not disguise launch success
                 }
@@ -110,5 +123,36 @@ public sealed class SandboxLauncher : ISandboxLauncher
         }
 
         return result;
+    }
+
+    private void CleanupStaleRunFiles()
+    {
+        try
+        {
+            if (!Directory.Exists(_tempDirectory))
+            {
+                return;
+            }
+
+            var cutoff = DateTime.UtcNow - TempFileMaxAge;
+            foreach (var file in Directory.EnumerateFiles(_tempDirectory, "Sandbox_*.wsb"))
+            {
+                try
+                {
+                    if (File.GetLastWriteTimeUtc(file) < cutoff)
+                    {
+                        File.Delete(file);
+                    }
+                }
+                catch
+                {
+                    // Best-effort cleanup; a locked file must not prevent construction
+                }
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup; enumeration failures must not prevent construction
+        }
     }
 }

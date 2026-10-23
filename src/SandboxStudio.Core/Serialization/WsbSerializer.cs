@@ -64,7 +64,26 @@ public sealed class WsbSerializer : IWsbSerializer
             Directory.CreateDirectory(directory);
         }
 
-        await File.WriteAllTextAsync(filePath, xml, new UTF8Encoding(false), cancellationToken);
+        var tempFilePath = $"{filePath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await File.WriteAllTextAsync(tempFilePath, xml, new UTF8Encoding(false), cancellationToken);
+            File.Move(tempFilePath, filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(tempFilePath))
+            {
+                try
+                {
+                    File.Delete(tempFilePath);
+                }
+                catch
+                {
+                    // Best-effort cleanup of the temporary file
+                }
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -83,6 +102,8 @@ public sealed class WsbSerializer : IWsbSerializer
 
     private sealed class Utf8StringWriter : StringWriter
     {
-        public override Encoding Encoding => new UTF8Encoding(false);
+        private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
+
+        public override Encoding Encoding => Utf8NoBom;
     }
 }

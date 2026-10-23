@@ -13,6 +13,7 @@ public sealed class JsonProfileRepositoryTests : IDisposable
     public JsonProfileRepositoryTests()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), "SandboxStudioTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_tempDir);
         _sut = new JsonProfileRepository(_tempDir);
     }
 
@@ -101,8 +102,8 @@ public sealed class JsonProfileRepositoryTests : IDisposable
     public async Task EnsureDefaultPresetsAsync_WhenPresetWriteFailsAfterPartialSeed_RetryCompletesMissingPresets()
     {
         var presets = _sut.GetDefaultPresets();
-        var blockedTempPath = Path.Combine(_tempDir, $"{presets[1].Id:N}.json.tmp");
-        Directory.CreateDirectory(blockedTempPath);
+        var blockedTargetPath = Path.Combine(_tempDir, $"{presets[1].Id:N}.json");
+        Directory.CreateDirectory(blockedTargetPath);
 
         var initialize = () => _sut.EnsureDefaultPresetsAsync();
         await initialize.Should().ThrowAsync<UnauthorizedAccessException>();
@@ -112,7 +113,7 @@ public sealed class JsonProfileRepositoryTests : IDisposable
         File.Exists(Path.Combine(_tempDir, ".initialized")).Should().BeFalse();
         File.Exists(Path.Combine(_tempDir, ".initializing")).Should().BeTrue();
 
-        Directory.Delete(blockedTempPath);
+        Directory.Delete(blockedTargetPath);
         await _sut.EnsureDefaultPresetsAsync();
         profiles = await _sut.GetAllAsync();
 

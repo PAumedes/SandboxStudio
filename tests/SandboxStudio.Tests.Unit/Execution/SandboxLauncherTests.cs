@@ -62,6 +62,75 @@ public sealed class SandboxLauncherTests : IDisposable
     }
 
     [Fact]
+    public async Task LaunchAsync_WhenSandboxIsUnavailable_ReturnsFailureWithoutWriting()
+    {
+        // Arrange
+        var sut = new SandboxLauncher(
+            _mockSerializer.Object,
+            _mockValidator.Object,
+            _mockRepository.Object,
+            _tempDir,
+            sandboxAvailability: () => false);
+
+        _mockValidator.Setup(v => v.Validate(It.IsAny<WsbConfiguration>())).Returns(new ValidationResult());
+
+        // Act
+        var result = await sut.LaunchAsync(new WsbConfiguration());
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not installed or enabled");
+        _mockSerializer.Verify(s => s.SerializeToFileAsync(It.IsAny<WsbConfiguration>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LaunchAsync_WhenSerializationIsCancelled_PropagatesCancellation()
+    {
+        // Arrange
+        var sut = new SandboxLauncher(
+            _mockSerializer.Object,
+            _mockValidator.Object,
+            _mockRepository.Object,
+            _tempDir,
+            sandboxAvailability: () => true);
+
+        _mockValidator.Setup(v => v.Validate(It.IsAny<WsbConfiguration>())).Returns(new ValidationResult());
+        _mockSerializer
+            .Setup(s => s.SerializeToFileAsync(It.IsAny<WsbConfiguration>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException());
+
+        // Act
+        var act = () => sut.LaunchAsync(new WsbConfiguration());
+
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task LaunchProfileAsync_WhenLaunchSucceeds_SetsLastLaunchedAtAndPersistsProfile()
+    {
+        // Arrange
+        var profile = new SandboxProfile();
+        var sut = new SandboxLauncher(
+            _mockSerializer.Object,
+            _mockValidator.Object,
+            _mockRepository.Object,
+            _tempDir,
+            processStarter: _ => null,
+            sandboxAvailability: () => true);
+
+        _mockValidator.Setup(v => v.Validate(profile.Configuration)).Returns(new ValidationResult());
+
+        // Act
+        var result = await sut.LaunchProfileAsync(profile);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        profile.LastLaunchedAt.Should().NotBeNull();
+        _mockRepository.Verify(r => r.SaveAsync(profile, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task LaunchProfileAsync_WhenLaunchValidationFails_DoesNotPersistLastLaunchedAt()
     {
         // Arrange

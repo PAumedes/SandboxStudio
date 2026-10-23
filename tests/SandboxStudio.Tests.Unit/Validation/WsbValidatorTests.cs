@@ -90,6 +90,27 @@ public sealed class WsbValidatorTests
         result.Messages.Should().Contain(m => m.Severity == ValidationSeverity.Error && m.PropertyName == nameof(WsbConfiguration.Networking));
     }
 
+    [Theory]
+    [InlineData("enable")]
+    [InlineData("DISABLE")]
+    [InlineData("default")]
+    [InlineData("Enabled")]
+    public void Validate_WhenTriStateHasNonCanonicalCasing_ReturnsError(string value)
+    {
+        // Arrange - Windows Sandbox only accepts canonical "Default", "Enable", "Disable" casing
+        var config = new WsbConfiguration
+        {
+            Networking = value
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Messages.Should().Contain(m => m.Severity == ValidationSeverity.Error && m.PropertyName == nameof(WsbConfiguration.Networking));
+    }
+
     [Fact]
     public void Validate_WhenHostFolderIsEmpty_ReturnsError()
     {
