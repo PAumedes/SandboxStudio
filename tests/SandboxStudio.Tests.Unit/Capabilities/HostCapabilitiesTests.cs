@@ -12,12 +12,14 @@ public sealed class HostCapabilitiesTests
         bool isArm64 = false,
         string? editionId = "Professional",
         bool sandboxExecutableExists = true,
+        bool virtualizationEnabled = true,
         IReadOnlyDictionary<string, object?>? policyValues = null) =>
         new(
             osBuild: () => osBuild,
             isArm64: () => isArm64,
             editionId: () => editionId,
             sandboxExecutableExists: () => sandboxExecutableExists,
+            virtualizationEnabled: () => virtualizationEnabled,
             readPolicyValue: name => policyValues is not null && policyValues.TryGetValue(name, out var value) ? value : null);
 
     [Fact]
@@ -229,6 +231,58 @@ public sealed class HostCapabilitiesTests
 
         // Act & Assert
         sut.SandboxStatus.Should().Be(HostSandboxStatus.Available);
+    }
+
+    [Fact]
+    public void SandboxStatus_WhenVirtualizationIsDisabled_ReturnsVirtualizationDisabled()
+    {
+        // Arrange
+        var sut = CreateSut(sandboxExecutableExists: true, virtualizationEnabled: false);
+
+        // Act & Assert
+        sut.SandboxStatus.Should().Be(HostSandboxStatus.VirtualizationDisabled);
+    }
+
+    [Fact]
+    public void SandboxStatus_WhenVirtualizationIsDisabled_EditionStillDoesNotMatter()
+    {
+        // Arrange - the executable is present, so the unsupported edition cannot downgrade the verdict
+        var sut = CreateSut(
+            editionId: "Home",
+            sandboxExecutableExists: true,
+            virtualizationEnabled: false);
+
+        // Act & Assert
+        sut.SandboxStatus.Should().Be(HostSandboxStatus.VirtualizationDisabled);
+    }
+
+    [Fact]
+    public void SandboxStatus_WhenExeMissingAndEditionUnsupported_VirtualizationCannotLeakIntoVerdict()
+    {
+        // Arrange - virt is only consulted once the executable exists; absent feature + bad edition stays an edition verdict
+        var sut = CreateSut(
+            editionId: "Home",
+            sandboxExecutableExists: false,
+            virtualizationEnabled: false);
+
+        // Act & Assert
+        sut.SandboxStatus.Should().Be(HostSandboxStatus.UnsupportedEdition);
+    }
+
+    [Fact]
+    public void SandboxStatus_WhenExecutableIsMissing_VirtualizationProbeIsNotConsulted()
+    {
+        // Arrange - the probe must not run when there is nothing to launch anyway
+        var sut = new HostCapabilities(
+            osBuild: () => 26100,
+            isArm64: () => false,
+            editionId: () => "Professional",
+            sandboxExecutableExists: () => false,
+            virtualizationEnabled: () => throw new InvalidOperationException("probe must not run"),
+            readPolicyValue: _ => null);
+
+        // Act & Assert
+        sut.SandboxStatus.Should().Be(HostSandboxStatus.NotInstalled);
     }
 
     [Fact]

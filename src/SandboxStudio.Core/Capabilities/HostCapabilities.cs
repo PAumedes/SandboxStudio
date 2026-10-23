@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 using System.Security;
 using Microsoft.Win32;
 using SandboxStudio.Core.Models;
@@ -32,6 +33,7 @@ public sealed class HostCapabilities : IHostCapabilities
         };
 
     private readonly Func<bool> _sandboxExecutableExists;
+    private readonly Func<bool> _virtualizationEnabled;
     private readonly Func<string, object?> _readPolicyValue;
 
     /// <summary>
@@ -42,13 +44,15 @@ public sealed class HostCapabilities : IHostCapabilities
     /// <param name="isArm64">Arm-architecture probe.</param>
     /// <param name="editionId">Windows edition identifier probe.</param>
     /// <param name="sandboxExecutableExists">Windows Sandbox executable presence probe.</param>
+    /// <param name="virtualizationEnabled">Hardware-virtualization probe; reports disabled on non-Windows hosts (unreached in practice, since the executable check fails first).</param>
     /// <param name="readPolicyValue">Reads a policy value by name; returns <see langword="null"/> when not configured.</param>
     public HostCapabilities(
         Func<int>? osBuild = null,
         Func<bool>? isArm64 = null,
         Func<string?>? editionId = null,
         Func<bool>? sandboxExecutableExists = null,
-        Func<string, object?>? readPolicyValue = null)
+        Func<string, object?>? readPolicyValue = null,
+        Func<bool>? virtualizationEnabled = null)
     {
         var osBuildProbe = osBuild ?? (() => Environment.OSVersion.Version.Build);
         var arm64Probe = isArm64 ?? (() =>
@@ -61,6 +65,7 @@ public sealed class HostCapabilities : IHostCapabilities
 
         _sandboxExecutableExists = sandboxExecutableExists
             ?? (() => File.Exists(SandboxHostPaths.WindowsSandboxExe));
+        _virtualizationEnabled = virtualizationEnabled ?? DetectVirtualizationEnabled;
         _readPolicyValue = readPolicyValue ?? ReadPolicyValue;
     }
 
@@ -80,14 +85,18 @@ public sealed class HostCapabilities : IHostCapabilities
         {
             // Executable presence is the ground truth; the edition check only
             // explains why the feature may be missing.
-            if (_sandboxExecutableExists())
+            if (!_sandboxExecutableExists())
             {
-                return HostSandboxStatus.Available;
+                return string.IsNullOrWhiteSpace(EditionId) || IsSupportedEdition(EditionId)
+                    ? HostSandboxStatus.NotInstalled
+                    : HostSandboxStatus.UnsupportedEdition;
             }
 
-            return string.IsNullOrWhiteSpace(EditionId) || IsSupportedEdition(EditionId)
-                ? HostSandboxStatus.NotInstalled
-                : HostSandboxStatus.UnsupportedEdition;
+            // The optional feature is installed; the only remaining boot blocker
+            // is firmware-level virtualization.
+            return _virtualizationEnabled()
+                ? HostSandboxStatus.Available
+                : HostSandboxStatus.VirtualizationDisabled;
         }
     }
 
@@ -186,6 +195,34 @@ public sealed class HostCapabilities : IHostCapabilities
 
     private bool IsBlockedByPolicy(string valueName) =>
         _readPolicyValue(valueName) is int value && value == 0;
+
+    /// <summary>
+    /// Win32 PF_VIRT_FIRMWARE_ENABLED: hardware virtualization is enabled in firmware.
+    /// </summary>
+    private const uint PfVirtFirmwareEnabled = 21;
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern int IsProcessorFeaturePresent(uint processorFeature);
+
+    private static bool DetectVirtualizationEnabled()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        // PF_VIRT_FIRMWARE_ENABLED goes false once a hypervisor runs (Hyper-V,
+        // WSL2, VBS); an active hypervisor is itself proof that hardware
+        // virtualization is enabled.
+        return IsProcessorFeaturePresent(PfVirtFirmwareEnabled) != 0 || IsHypervisorPresent();
+    }
+
+    /// <summary>
+    /// CPUID leaf 1 ECX bit 31 reports that a hypervisor is present (x86/x64 only;
+    /// reports false on Arm64 where the firmware flag remains the signal).
+    /// </summary>
+    private static bool IsHypervisorPresent() =>
+        X86Base.IsSupported && (X86Base.CpuId(1, 0).Ecx & (1 << 31)) != 0;
 
     private static string? ReadEditionId()
     {

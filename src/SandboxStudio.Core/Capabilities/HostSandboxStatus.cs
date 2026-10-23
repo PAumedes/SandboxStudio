@@ -12,5 +12,8 @@ public enum HostSandboxStatus
     NotInstalled,
 
     /// <summary>The Windows edition does not support Windows Sandbox (requires Pro, Enterprise, or Education).</summary>
-    UnsupportedEdition
+    UnsupportedEdition,
+
+    /// <summary>Windows Sandbox is installed but hardware virtualization is disabled in firmware or unavailable.</summary>
+    VirtualizationDisabled
 }

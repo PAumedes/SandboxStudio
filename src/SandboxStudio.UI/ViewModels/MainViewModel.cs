@@ -89,24 +89,29 @@ public sealed partial class MainViewModel : ObservableObject
         _launcher = launcher ?? throw new ArgumentNullException(nameof(launcher));
         _capabilities = capabilities ?? throw new ArgumentNullException(nameof(capabilities));
 
-        IsSandboxInstalled = capabilities.SandboxStatus == HostSandboxStatus.Available;
-        SandboxStatusMessage = capabilities.SandboxStatus switch
+        var status = capabilities.SandboxStatus;
+        IsSandboxInstalled = status == HostSandboxStatus.Available;
+        SandboxStatusMessage = status switch
         {
             HostSandboxStatus.Available => "Windows Sandbox Engine Ready",
             HostSandboxStatus.UnsupportedEdition => "Windows Sandbox requires a Pro, Enterprise, or Education edition",
+            HostSandboxStatus.VirtualizationDisabled => "Hardware virtualization is disabled or unavailable",
             _ => "Windows Sandbox Engine Unavailable"
         };
-        SandboxUnavailableReason = capabilities.SandboxStatus switch
+        SandboxUnavailableReason = status switch
         {
             HostSandboxStatus.UnsupportedEdition =>
                 "Windows Sandbox requires a Pro, Enterprise, or Education edition of Windows.",
             HostSandboxStatus.NotInstalled =>
                 "Windows Sandbox is not enabled on this host. Profiles can be created, but launching them requires the Windows Sandbox optional feature.",
+            HostSandboxStatus.VirtualizationDisabled =>
+                "Windows Sandbox is installed, but hardware virtualization appears disabled. Enable virtualization (Intel VT-x/AMD-V) in BIOS/UEFI settings; inside a virtual machine, check nested-virtualization support.",
             _ => null
         };
-        SandboxUnavailableTitle = capabilities.SandboxStatus switch
+        SandboxUnavailableTitle = status switch
         {
             HostSandboxStatus.UnsupportedEdition => "Windows Sandbox unsupported on this edition",
+            HostSandboxStatus.VirtualizationDisabled => "Hardware virtualization disabled",
             _ => null
         };
     }
