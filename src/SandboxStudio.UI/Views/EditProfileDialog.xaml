@@ -38,6 +38,11 @@
                 AcceptsReturn="True"
                 TextWrapping="Wrap"
                 MinHeight="72" />
+            <TextBox
+                x:Name="TagsTextBox"
+                Header="Tags"
+                MaxLength="200"
+                PlaceholderText="Comma-separated (e.g. Security, Testing)" />
 
             <ComboBox Header="Networking" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.Networking, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">

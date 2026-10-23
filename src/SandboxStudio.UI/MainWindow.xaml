@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:conv="using:SandboxStudio.UI.Converters"
     xmlns:models="using:SandboxStudio.Core.Models"
     mc:Ignorable="d"
     Title="SandboxStudio">
@@ -13,6 +14,10 @@
     </Window.SystemBackdrop>
 
     <Grid RowDefinitions="44,Auto,*,Auto">
+        <Grid.Resources>
+            <conv:TagsToTextConverter x:Key="TagsToText" />
+            <conv:TagsToVisibilityConverter x:Key="TagsToVisibility" />
+        </Grid.Resources>
         <Grid
             x:Name="TitleBarDragRegion"
             Grid.Row="0"
@@ -48,6 +53,15 @@
                 </StackPanel>
             </StackPanel>
 
+            <TextBox
+                Grid.Column="1"
+                PlaceholderText="Filter by tags (comma-separated)"
+                AutomationProperties.Name="Filter profiles by tag"
+                Width="240"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Text="{x:Bind ViewModel.FilterText, Mode=TwoWay}" />
+
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
                 <Button Content="Refresh" Command="{x:Bind ViewModel.LoadProfilesCommand}">
                     <Button.KeyboardAccelerators>
@@ -74,6 +88,15 @@
                     Severity="Warning"
                     Title="Windows Sandbox Not Detected"
                     Message="Windows Sandbox is not enabled on this host. Profiles can be created, but launching them requires Windows Sandbox." />
+
+                <!-- Empty state when the tag filter matches nothing -->
+                <InfoBar
+                    x:Name="NoMatchingProfilesInfoBar"
+                    IsOpen="{x:Bind ViewModel.HasNoMatchingProfiles, Mode=OneWay}"
+                    Severity="Informational"
+                    IsClosable="False"
+                    Title="No profiles match"
+                    Message="No saved profiles contain all of the tags in the filter. Adjust or clear the filter." />
 
                 <!-- Profiles ItemsControl -->
                 <ItemsRepeater x:Name="ProfilesRepeater" ItemsSource="{x:Bind ViewModel.Profiles, Mode=OneWay}">
@@ -121,8 +144,17 @@
                                     </Button>
                                 </Grid>
 
-                                <!-- Card Description -->
-                                <TextBlock Grid.Row="1" Text="{x:Bind Description}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" Margin="0,8,0,12" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                                <!-- Card Description and Tags -->
+                                <StackPanel Grid.Row="1" Margin="0,8,0,12">
+                                    <TextBlock Text="{x:Bind Description}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Tags, Converter={StaticResource TagsToText}}"
+                                               Style="{ThemeResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource AccentAAFillColorDefaultBrush}"
+                                               Margin="0,4,0,0"
+                                               MaxLines="2"
+                                               TextTrimming="CharacterEllipsis"
+                                               Visibility="{Binding Tags, Converter={StaticResource TagsToVisibility}}" />
+                                </StackPanel>
 
                                 <!-- Card Footer: Quick Actions -->
                                 <Grid Grid.Row="2" ColumnDefinitions="*, Auto">

@@ -16,12 +16,24 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IProfileRepository _repository;
     private readonly ISandboxLauncher _launcher;
     private readonly IHostCapabilities _capabilities;
+    private readonly List<SandboxProfile> _allProfiles = new();
 
     /// <summary>
-    /// Gets or sets the profiles displayed on the dashboard.
+    /// Gets the profiles displayed on the dashboard, filtered by <see cref="FilterText"/>.
+    /// </summary>
+    public ObservableCollection<SandboxProfile> Profiles { get; } = new();
+
+    /// <summary>
+    /// Gets or sets the tag filter text; profiles must contain every entered tag to show.
     /// </summary>
     [ObservableProperty]
-    public partial ObservableCollection<SandboxProfile> Profiles { get; set; } = new();
+    public partial string FilterText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the active tag filter matches no profiles.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool HasNoMatchingProfiles { get; set; }
 
     /// <summary>
     /// Gets or sets the currently selected profile.
@@ -113,13 +125,13 @@ public sealed partial class MainViewModel : ObservableObject
             await _repository.EnsureDefaultPresetsAsync();
             var items = await _repository.GetAllAsync();
 
-            Profiles.Clear();
-            foreach (var item in items)
-            {
-                Profiles.Add(item);
-            }
+            _allProfiles.Clear();
+            _allProfiles.AddRange(items);
+            ApplyFilter();
 
-            StatusMessage = $"{Profiles.Count} profiles ready.";
+            StatusMessage = HasActiveTagFilter
+                ? $"{Profiles.Count} of {_allProfiles.Count} profiles ready."
+                : $"{Profiles.Count} profiles ready.";
         }
         catch (Exception ex)
         {
@@ -139,14 +151,16 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var newProfile = new SandboxProfile
         {
-            Name = $"New Sandbox {Profiles.Count + 1}",
+            Name = $"New Sandbox {_allProfiles.Count + 1}",
             Description = "Custom sandbox configuration."
         };
 
         try
         {
             await _repository.SaveAsync(newProfile);
-            Profiles.Add(newProfile);
+            _allProfiles.Add(newProfile);
+            FilterText = string.Empty; // clear the filter so the new card is visible
+            ApplyFilter();
             SelectedProfile = newProfile;
             StatusMessage = $"Created profile '{newProfile.Name}'.";
         }
@@ -197,8 +211,41 @@ public sealed partial class MainViewModel : ObservableObject
         var deleted = await _repository.DeleteAsync(profile.Id);
         if (deleted)
         {
-            Profiles.Remove(profile);
+            _allProfiles.Remove(profile);
+            ApplyFilter();
             StatusMessage = $"Deleted '{profile.Name}'.";
+        }
+    }
+
+    /// <summary>
+    /// Adds a profile persisted outside this ViewModel (for example a duplicate) to the dashboard.
+    /// </summary>
+    public void TrackProfile(SandboxProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        _allProfiles.Add(profile);
+        ApplyFilter();
+    }
+
+    partial void OnFilterTextChanged(string value) => ApplyFilter();
+
+    private bool HasActiveTagFilter => ProfileTags.Parse(FilterText).Count > 0;
+
+    private void ApplyFilter()
+    {
+        var requiredTags = ProfileTags.Parse(FilterText);
+        Profiles.Clear();
+        foreach (var profile in _allProfiles.Where(
+                     p => ProfileTags.MatchesAll(p.Tags, requiredTags)))
+        {
+            Profiles.Add(profile);
+        }
+
+        HasNoMatchingProfiles = Profiles.Count == 0 && requiredTags.Count > 0;
+        if (requiredTags.Count > 0)
+        {
+            StatusMessage = $"{Profiles.Count} of {_allProfiles.Count} profiles match the tag filter.";
         }
     }
 }

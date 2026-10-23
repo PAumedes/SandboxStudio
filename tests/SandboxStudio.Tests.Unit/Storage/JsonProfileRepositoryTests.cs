@@ -70,6 +70,44 @@ public sealed class JsonProfileRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task GetAllAsync_WhenStoredFileHasNullMembers_NormalizesToEmpty()
+    {
+        // Arrange - corrupt-but-loadable JSON can null out required members
+        var id = Guid.NewGuid();
+        await File.WriteAllTextAsync(
+            Path.Combine(_tempDir, $"{id:N}.json"),
+            $$"""{"Id":"{{id}}","Name":"Corrupt","Tags":null,"Configuration":null}""");
+
+        // Act
+        var profiles = await _sut.GetAllAsync();
+
+        // Assert
+        var profile = profiles.Should().ContainSingle().Subject;
+        profile.Tags.Should().NotBeNull().And.BeEmpty();
+        profile.Configuration.Should().NotBeNull();
+        profile.Configuration.MappedFolders.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenStoredFileHasNullMembers_NormalizesToEmpty()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        await File.WriteAllTextAsync(
+            Path.Combine(_tempDir, $"{id:N}.json"),
+            $$"""{"Id":"{{id}}","Name":"Corrupt","Tags":null,"Configuration":null}""");
+
+        // Act
+        var profile = await _sut.GetByIdAsync(id);
+
+        // Assert
+        profile.Should().NotBeNull();
+        profile!.Tags.Should().NotBeNull().And.BeEmpty();
+        profile.Configuration.Should().NotBeNull();
+        profile.Configuration.MappedFolders.Should().NotBeNull();
+    }
+
+    [Fact]
     public void GetDefaultPresets_ReturnsPreconfiguredSecurityAndDevPresets()
     {
         // Act

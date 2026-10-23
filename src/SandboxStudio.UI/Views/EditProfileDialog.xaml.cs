@@ -46,6 +46,7 @@ public sealed partial class EditProfileDialog : ContentDialog
         var draft = ViewModel.Profile;
         NameTextBox.Text = draft.Name ?? string.Empty;
         DescriptionTextBox.Text = draft.Description ?? string.Empty;
+        TagsTextBox.Text = draft.Tags is { } tags ? ProfileTags.Format(tags) : string.Empty;
         MemoryTextBox.Text = draft.Configuration.MemoryInMB?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         StartupCommandTextBox.Text = draft.Configuration.LogonCommand?.Command ?? string.Empty;
 
@@ -138,6 +139,7 @@ public sealed partial class EditProfileDialog : ContentDialog
             var draft = ViewModel.Profile;
             draft.Name = NameTextBox.Text;
             draft.Description = DescriptionTextBox.Text;
+            draft.Tags = ProfileTags.Parse(TagsTextBox.Text);
             draft.Configuration.MemoryInMB = memoryInMb;
             var startupCommand = StartupCommandTextBox.Text;
             draft.Configuration.LogonCommand = string.IsNullOrWhiteSpace(startupCommand)

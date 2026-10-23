@@ -50,6 +50,7 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
                     var profile = JsonSerializer.Deserialize<SandboxProfile>(json, JsonOptions);
                     if (profile is not null)
                     {
+                        Normalize(profile);
                         profiles.Add(profile);
                     }
                 }
@@ -134,7 +135,13 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
             }
 
             var json = await File.ReadAllTextAsync(filePath, cancellationToken);
-            return JsonSerializer.Deserialize<SandboxProfile>(json, JsonOptions);
+            var profile = JsonSerializer.Deserialize<SandboxProfile>(json, JsonOptions);
+            if (profile is not null)
+            {
+                Normalize(profile);
+            }
+
+            return profile;
         }
         catch (JsonException)
         {
@@ -250,6 +257,17 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
     }
 
     private string GetProfileFilePath(Guid id) => Path.Combine(_profilesDirectory, $"{id:N}.json");
+
+    /// <summary>
+    /// Repairs members that deserializers can leave null on corrupt-but-loadable files
+    /// so downstream consumers never see a null required member.
+    /// </summary>
+    private static void Normalize(SandboxProfile profile)
+    {
+        profile.Tags ??= new();
+        profile.Configuration ??= new WsbConfiguration();
+        profile.Configuration.MappedFolders ??= new();
+    }
 
     private void EnsureStorageDirectory()
     {

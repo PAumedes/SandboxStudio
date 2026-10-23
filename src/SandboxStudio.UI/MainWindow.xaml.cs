@@ -142,7 +142,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            ViewModel.Profiles.Add(duplicate);
+            ViewModel.TrackProfile(duplicate);
             ViewModel.StatusMessage = $"Duplicated '{profile.Name}' as '{duplicate.Name}'.";
         }
         catch (Exception ex)
@@ -252,6 +252,7 @@ public sealed partial class MainWindow : Window
 
             var importService = App.Host.Services.GetRequiredService<WsbImportService>();
             var result = await importService.ImportAsync(file.Path);
+            ViewModel.FilterText = string.Empty;
             await ViewModel.LoadProfilesAsync();
 
             var errorCount = result.Validation.Messages.Count(message => message.Severity == ValidationSeverity.Error);
