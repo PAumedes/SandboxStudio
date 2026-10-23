@@ -12,6 +12,12 @@ public interface ISandboxSessionManager
     /// <summary>Lists the sessions reported for the current user.</summary>
     Task<WsbListResult> ListAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Starts a new session from a formatted <c>&lt;Configuration&gt;</c> XML string
+    /// (<c>wsb start --config</c>) and reports the sandbox ID the CLI assigned.
+    /// </summary>
+    Task<WsbStartResult> StartAsync(string configurationXml, CancellationToken cancellationToken = default);
+
     /// <summary>Stops a session, releasing its resources and closing its window.</summary>
     Task<WsbOperationResult> StopAsync(Guid id, CancellationToken cancellationToken = default);
 

@@ -29,9 +29,9 @@ Pure domain library with zero UI dependencies:
 * **`Serialization`**: High-performance XML serializer emitting clean, compliant `.wsb` documents without spurious schema namespaces (`xmlns:xsi`, `xmlns:xsd`).
 * **`Validation`**: Enforces system constraints (memory bounds $\ge 256$ MB, command length limits, valid path syntax, read-only flags).
 * **`Storage`**: Thread-safe atomic file persistence for user-defined profiles and built-in curated presets.
-* **`Execution`**: Validates configuration, materializes transient `.wsb` files, and invokes the host Windows Sandbox process.
+* **`Execution`**: Validates configuration, then launches through the `wsb` CLI when supported (capturing the sandbox ID) or materializes a transient `.wsb` file for the host Windows Sandbox process.
 * **`Capabilities`**: Computes effective per-feature availability from host OS build and Windows Sandbox policy registry values, and reports overall Sandbox host status.
-* **`Sessions`**: Discovers and controls live sandbox sessions through the `wsb` CLI (Windows 11 24H2+): lists sessions from `--raw` JSON output, and stops or connects to them by sandbox ID.
+* **`Sessions`**: Discovers and controls live sandbox sessions through the `wsb` CLI (Windows 11 24H2+): starts sessions from inline configuration XML, lists sessions from `--raw` JSON output, and stops or connects to them by sandbox ID.
 
 ### 2. `SandboxStudio.UI` (Target: `net10.0-windows10.0.19041.0`)
 Presentation layer powered by Windows App SDK and WinUI 3:

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using SandboxStudio.Core.Capabilities;
 
@@ -11,7 +12,20 @@ namespace SandboxStudio.Core.Sessions;
 /// </summary>
 public sealed class WsbSessionManager : ISandboxSessionManager
 {
+    /// <summary>
+    /// Maximum serialized configuration length passed inline to <c>wsb start</c>;
+    /// the CreateProcess command line caps near 32K and argument escaping inflates quotes.
+    /// </summary>
+    public const int MaxInlineConfigChars = 28_000;
+
     private static readonly TimeSpan InvocationTimeout = TimeSpan.FromSeconds(30);
+
+    // Provisioning a sandbox session can take far longer than list/stop.
+    private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(90);
+
+    // After wsb.exe exits, its own output is already flushed; this bounds the drain
+    // in case a spawned descendant still holds the redirected pipes open.
+    private static readonly TimeSpan DrainTimeout = TimeSpan.FromSeconds(3);
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -52,7 +66,7 @@ public sealed class WsbSessionManager : ISandboxSessionManager
             return WsbListResult.Failure("The Windows Sandbox CLI is not available on this host.");
         }
 
-        var invocation = await InvokeAsync(captureOutput: true, cancellationToken, "list");
+        var invocation = await InvokeAsync(InvocationTimeout, captureOutput: true, cancellationToken, "list");
         if (invocation.ExitCode != 0)
         {
             return WsbListResult.Failure(DescribeFailure("list", invocation));
@@ -84,6 +98,43 @@ public sealed class WsbSessionManager : ISandboxSessionManager
     }
 
     /// <inheritdoc/>
+    public async Task<WsbStartResult> StartAsync(string configurationXml, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(configurationXml);
+        if (!IsSupported)
+        {
+            return WsbStartResult.Failure("The Windows Sandbox CLI is not available on this host.");
+        }
+
+        if (configurationXml.Length > MaxInlineConfigChars)
+        {
+            return WsbStartResult.Failure(
+                "The configuration is too large for a wsb start command line.",
+                cliNeverStarted: true);
+        }
+
+        var invocation = await InvokeAsync(StartTimeout, captureOutput: true, cancellationToken, "start", "--config", configurationXml);
+        if (invocation.ExitCode != 0)
+        {
+            return WsbStartResult.Failure(
+                DescribeFailure("start", invocation),
+                cliNeverStarted: !invocation.Spawned);
+        }
+
+        try
+        {
+            var response = JsonSerializer.Deserialize<StartResponseDto>(invocation.StdOut, JsonOptions);
+            return response?.Id is { } id && id != Guid.Empty
+                ? WsbStartResult.Success(id)
+                : WsbStartResult.Failure("The Windows Sandbox CLI did not report a sandbox ID.");
+        }
+        catch (JsonException)
+        {
+            return WsbStartResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.");
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<WsbOperationResult> StopAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await RunStateChangingAsync("stop", id, cancellationToken);
@@ -108,13 +159,14 @@ public sealed class WsbSessionManager : ISandboxSessionManager
             return WsbOperationResult.Failure("The Windows Sandbox CLI is not available on this host.");
         }
 
-        var invocation = await InvokeAsync(captureOutput, cancellationToken, verb, "--id", id.ToString());
+        var invocation = await InvokeAsync(InvocationTimeout, captureOutput, cancellationToken, verb, "--id", id.ToString());
         return invocation.ExitCode == 0
             ? WsbOperationResult.Success()
             : WsbOperationResult.Failure(DescribeFailure(verb, invocation));
     }
 
     private async Task<WsbInvocationResult> InvokeAsync(
+        TimeSpan timeout,
         bool captureOutput,
         CancellationToken cancellationToken,
         params string[] arguments)
@@ -137,54 +189,104 @@ public sealed class WsbSessionManager : ISandboxSessionManager
 
         try
         {
-            return await _invoker(startInfo, captureOutput, cancellationToken);
+            return await _invoker(startInfo, captureOutput, timeout, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            return new WsbInvocationResult(-1, string.Empty, ex.Message);
+            // An invoker that throws never ran the CLI.
+            return new WsbInvocationResult(-1, string.Empty, ex.Message, Spawned: false);
         }
     }
 
     private static async Task<WsbInvocationResult> InvokeProcessAsync(
         ProcessStartInfo startInfo,
         bool captureOutput,
+        TimeSpan timeout,
         CancellationToken cancellationToken)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(InvocationTimeout);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(timeout);
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Failed to start the Windows Sandbox CLI.");
+
+        // Pumps append under a lock so partially drained output is still usable
+        // if a spawned descendant holds the pipes open past wsb.exe's exit.
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+        var pumps = new List<Task>(capacity: 2);
+        if (startInfo.RedirectStandardOutput)
+        {
+            pumps.Add(PumpAsync(process.StandardOutput, stdout));
+        }
+
+        if (startInfo.RedirectStandardError)
+        {
+            pumps.Add(PumpAsync(process.StandardError, stderr));
+        }
+
         try
         {
-            var stdoutTask = startInfo.RedirectStandardOutput
-                ? process.StandardOutput.ReadToEndAsync(timeout.Token)
-                : Task.FromResult(string.Empty);
-            var stderrTask = startInfo.RedirectStandardError
-                ? process.StandardError.ReadToEndAsync(timeout.Token)
-                : Task.FromResult(string.Empty);
-            await process.WaitForExitAsync(timeout.Token);
-            return new WsbInvocationResult(process.ExitCode, await stdoutTask, await stderrTask);
+            await process.WaitForExitAsync(timeoutCts.Token);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            if (process.HasExited)
+            if (!process.HasExited)
             {
-                // The process exited between WaitForExitAsync and the stream
-                // awaits; report its real exit code rather than a timeout.
-                return new WsbInvocationResult(process.ExitCode, string.Empty, string.Empty);
-            }
+                try
+                {
+                    process.Kill();
+                }
+                catch
+                {
+                    // The invocation is already being reported as timed out.
+                }
 
+                return new WsbInvocationResult(
+                    -1,
+                    Drained(stdout),
+                    Drained(stderr) + "The Windows Sandbox CLI did not respond in time; a session may have been started — check Sessions.");
+            }
+        }
+
+        // The process exited — its own output is flushed. Bound the drain in case a
+        // descendant keeps the pipes open.
+        try
+        {
+            await Task.WhenAll(pumps).WaitAsync(DrainTimeout);
+        }
+        catch (TimeoutException)
+        {
+        }
+
+        return new WsbInvocationResult(process.ExitCode, Drained(stdout), Drained(stderr));
+
+        static string Drained(StringBuilder buffer)
+        {
+            lock (buffer)
+            {
+                return buffer.ToString();
+            }
+        }
+
+        static async Task PumpAsync(StreamReader reader, StringBuilder buffer)
+        {
+            var chunk = new char[4096];
             try
             {
-                process.Kill();
+                int read;
+                while ((read = await reader.ReadAsync(chunk)) > 0)
+                {
+                    lock (buffer)
+                    {
+                        buffer.Append(chunk, 0, read);
+                    }
+                }
             }
-            catch
+            catch (Exception)
             {
-                // The invocation is already being reported as timed out.
+                // The process or its pipes are being torn down; keep what was read.
             }
-
-            return new WsbInvocationResult(-1, string.Empty, "The Windows Sandbox CLI did not respond in time.");
         }
     }
 
@@ -204,6 +306,11 @@ public sealed class WsbSessionManager : ISandboxSessionManager
     private sealed class ListResponseDto
     {
         public List<EnvironmentDto>? WindowsSandboxEnvironments { get; set; }
+    }
+
+    private sealed class StartResponseDto
+    {
+        public Guid Id { get; set; }
     }
 
     private sealed class EnvironmentDto

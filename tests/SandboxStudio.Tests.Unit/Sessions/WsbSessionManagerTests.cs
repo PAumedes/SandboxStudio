@@ -24,6 +24,7 @@ public sealed class WsbSessionManagerTests
     private Task<WsbInvocationResult> CaptureInvoker(
         ProcessStartInfo startInfo,
         bool captureOutput,
+        TimeSpan timeout,
         CancellationToken cancellationToken)
     {
         _invocations.Add((startInfo, captureOutput));
@@ -220,6 +221,139 @@ public sealed class WsbSessionManagerTests
         // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorMessage.Should().Contain("no such sandbox");
+    }
+
+    [Fact]
+    public async Task StartAsync_PassesConfigInlineAndReturnsAssignedId()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        var id = Guid.NewGuid();
+        _nextResult = new(0, $$"""{"Id":"{{id}}"}""", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StartAsync("<Configuration><Networking>Disable</Networking></Configuration>");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.SessionId.Should().Be(id);
+        _invocations.Should().ContainSingle();
+        _invocations[0].StartInfo.ArgumentList.Should().Equal(
+            "--raw", "start", "--config", "<Configuration><Networking>Disable</Networking></Configuration>");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenNotSupported_ReturnsFailureWithoutInvokingCli()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.RequiresNewerWindows);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StartAsync("<Configuration />");
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+        _invocations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenCliFails_ReturnsFailure()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(1, string.Empty, "configuration rejected");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StartAsync("<Configuration />");
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("configuration rejected");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenResponseLacksId_ReturnsFailure()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(0, "{}", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StartAsync("<Configuration />");
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenOutputIsNotJson_ReturnsFailure()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(0, "started!", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StartAsync("<Configuration />");
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenConfigExceedsInlineLimit_NeverInvokesCliAndMarksFallbackSafe()
+    {
+        // Arrange - the CreateProcess command line caps near 32K; oversized
+        // configs must fall back rather than fail the launch
+        ArrangeAvailability(FeatureStatus.Available);
+        var sut = CreateSut();
+        var oversizedXml = new string('x', WsbSessionManager.MaxInlineConfigChars + 1);
+
+        // Act
+        var result = await sut.StartAsync(oversizedXml);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.CliNeverStarted.Should().BeTrue();
+        _invocations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenCliNeverSpawned_PropagatesFallbackSafety()
+    {
+        // Arrange - a spawn failure means nothing reached wsb.exe
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(-1, string.Empty, "The system cannot find the file specified.", Spawned: false);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StartAsync("<Configuration />");
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.CliNeverStarted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenCliRanAndFailed_IsNotFallbackSafe()
+    {
+        // Arrange - a non-zero exit from a running CLI may have started a session
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(1, string.Empty, "rejected");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StartAsync("<Configuration />");
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.CliNeverStarted.Should().BeFalse();
     }
 
     [Fact]

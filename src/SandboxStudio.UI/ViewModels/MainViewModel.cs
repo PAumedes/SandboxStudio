@@ -191,10 +191,13 @@ public sealed partial class MainViewModel : ObservableObject
         var result = await _launcher.LaunchProfileAsync(profile);
         if (result.IsSuccess)
         {
+            var sessionNote = result.SessionId is { } sessionId
+                ? $" (session {sessionId.ToString("N")[..8]} — see Sessions)"
+                : string.Empty;
             var overrides = _capabilities.GetPolicyOverrides(profile.Configuration);
             StatusMessage = overrides.Count == 0
-                ? $"'{profile.Name}' launched successfully."
-                : $"'{profile.Name}' launched; host policy overrides: {string.Join("; ", overrides.Select(o => o.SettingName).Distinct())}.";
+                ? $"'{profile.Name}' launched successfully.{sessionNote}"
+                : $"'{profile.Name}' launched{sessionNote}; host policy overrides: {string.Join("; ", overrides.Select(o => o.SettingName).Distinct())}.";
         }
         else
         {

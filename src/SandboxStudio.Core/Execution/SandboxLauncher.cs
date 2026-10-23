@@ -2,6 +2,7 @@ using System.Diagnostics;
 using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Serialization;
+using SandboxStudio.Core.Sessions;
 using SandboxStudio.Core.Storage;
 using SandboxStudio.Core.Validation;
 
@@ -18,6 +19,7 @@ public sealed class SandboxLauncher : ISandboxLauncher
     private readonly IWsbValidator _validator;
     private readonly IProfileRepository? _profileRepository;
     private readonly string _tempDirectory;
+    private readonly ISandboxSessionManager? _sessionManager;
     private readonly Func<ProcessStartInfo, Process?> _processStarter;
     private readonly Func<bool> _sandboxAvailability;
 
@@ -32,11 +34,13 @@ public sealed class SandboxLauncher : ISandboxLauncher
         IProfileRepository? profileRepository = null,
         string? tempDirectory = null,
         Func<ProcessStartInfo, Process?>? processStarter = null,
-        Func<bool>? sandboxAvailability = null)
+        Func<bool>? sandboxAvailability = null,
+        ISandboxSessionManager? sessionManager = null)
     {
         _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _profileRepository = profileRepository;
+        _sessionManager = sessionManager;
         _tempDirectory = tempDirectory ?? Path.Combine(Path.GetTempPath(), "SandboxStudio", "Runs");
         _processStarter = processStarter ?? Process.Start;
         _sandboxAvailability = sandboxAvailability ?? (() => File.Exists(WindowsSandboxExePath));
@@ -57,6 +61,32 @@ public sealed class SandboxLauncher : ISandboxLauncher
         {
             var firstError = validationResult.Messages.First(m => m.Severity == ValidationSeverity.Error);
             return SandboxLaunchResult.Failure($"Validation failed: {firstError.PropertyName} - {firstError.Message}");
+        }
+
+        if (_sessionManager?.IsSupported == true)
+        {
+            // The CLI ships inside the Sandbox feature, so presence implies
+            // availability; wsb start also reports the sandbox ID for tracking.
+            try
+            {
+                var xml = _serializer.Serialize(configuration);
+                var start = await _sessionManager.StartAsync(xml, cancellationToken);
+                if (start.IsSuccess && start.SessionId is { } sessionId)
+                {
+                    return SandboxLaunchResult.CliSuccess(sessionId);
+                }
+
+                if (!start.CliNeverStarted)
+                {
+                    // The CLI ran and failed — a session may already exist; do not
+                    // risk a second launch through the file path.
+                    return SandboxLaunchResult.Failure(start.ErrorMessage ?? "Failed to launch Windows Sandbox.");
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return SandboxLaunchResult.Failure($"Failed to launch Windows Sandbox: {ex.Message}");
+            }
         }
 
         if (!IsSandboxAvailable())

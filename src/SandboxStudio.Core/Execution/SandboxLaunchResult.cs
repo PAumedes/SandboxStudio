@@ -7,7 +7,8 @@ public sealed record SandboxLaunchResult(
     bool IsSuccess,
     int? ProcessId,
     string? WsbFilePath,
-    string? ErrorMessage
+    string? ErrorMessage,
+    Guid? SessionId = null
 )
 {
     /// <summary>
@@ -15,6 +16,12 @@ public sealed record SandboxLaunchResult(
     /// </summary>
     public static SandboxLaunchResult Success(int? processId, string wsbFilePath) =>
         new(true, processId, wsbFilePath, null);
+
+    /// <summary>
+    /// Factory for a launch started through the <c>wsb</c> CLI, which reports a sandbox ID.
+    /// </summary>
+    public static SandboxLaunchResult CliSuccess(Guid sessionId) =>
+        new(true, null, null, null, sessionId);
 
     /// <summary>
     /// Factory for failed launch result.
