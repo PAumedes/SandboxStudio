@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Serialization;
+using SandboxStudio.Core.Sessions;
 using SandboxStudio.Core.Storage;
 using SandboxStudio.Core.Validation;
 using SandboxStudio.UI.ViewModels;
@@ -276,6 +277,16 @@ public sealed partial class MainWindow : Window
         {
             ViewModel.StatusMessage = $"Import failed: {ex.Message}";
         }
+    }
+
+    private async void OnSessionsClicked(object sender, RoutedEventArgs e)
+    {
+        var sessions = App.Host.Services.GetRequiredService<ISandboxSessionManager>();
+        var dialog = new SessionsDialog(sessions)
+        {
+            XamlRoot = Content.XamlRoot
+        };
+        await dialog.ShowAsync();
     }
 
     private static string FormatValidationMessages(ValidationResult result) =>

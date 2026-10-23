@@ -10,6 +10,11 @@ internal static class SandboxHostPaths
         ResolveSystemDirectory(),
         "WindowsSandbox.exe");
 
+    /// <summary>The Windows Sandbox CLI shipped with the feature on Windows 11 24H2+.</summary>
+    internal static readonly string WsbExe = Path.Combine(
+        ResolveSystemDirectory(),
+        "wsb.exe");
+
     private static string ResolveSystemDirectory()
     {
         // WindowsSandbox.exe only exists in the native System32. Under WOW64 a 32-bit

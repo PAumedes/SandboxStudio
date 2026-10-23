@@ -14,6 +14,7 @@ graph TD
         Storage[IProfileRepository: JsonProfileRepository]
         Execution[ISandboxLauncher: SandboxLauncher]
         Capabilities[IHostCapabilities: HostCapabilities]
+        Sessions[ISandboxSessionManager: WsbSessionManager]
     end
 
     Execution --> OS[Windows Sandbox Subsystem]
@@ -30,6 +31,7 @@ Pure domain library with zero UI dependencies:
 * **`Storage`**: Thread-safe atomic file persistence for user-defined profiles and built-in curated presets.
 * **`Execution`**: Validates configuration, materializes transient `.wsb` files, and invokes the host Windows Sandbox process.
 * **`Capabilities`**: Computes effective per-feature availability from host OS build and Windows Sandbox policy registry values, and reports overall Sandbox host status.
+* **`Sessions`**: Discovers and controls live sandbox sessions through the `wsb` CLI (Windows 11 24H2+): lists sessions from `--raw` JSON output, and stops or connects to them by sandbox ID.
 
 ### 2. `SandboxStudio.UI` (Target: `net10.0-windows10.0.19041.0`)
 Presentation layer powered by Windows App SDK and WinUI 3:

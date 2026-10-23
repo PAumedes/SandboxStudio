@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Execution;
 using SandboxStudio.Core.Serialization;
+using SandboxStudio.Core.Sessions;
 using SandboxStudio.Core.Storage;
 using SandboxStudio.Core.Validation;
 using SandboxStudio.UI.ViewModels;
@@ -41,6 +42,7 @@ public sealed partial class App : Application
                 services.AddSingleton<IProfileRepository, JsonProfileRepository>();
                 services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
                 services.AddSingleton<IHostCapabilities, HostCapabilities>();
+                services.AddSingleton<ISandboxSessionManager, WsbSessionManager>();
 
                 // ViewModels
                 services.AddTransient<MainViewModel>();

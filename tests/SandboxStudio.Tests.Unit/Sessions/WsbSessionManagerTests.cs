@@ -1,0 +1,243 @@
+using System.Diagnostics;
+using FluentAssertions;
+using Moq;
+using SandboxStudio.Core.Capabilities;
+using SandboxStudio.Core.Sessions;
+using Xunit;
+
+namespace SandboxStudio.Tests.Unit.Sessions;
+
+public sealed class WsbSessionManagerTests
+{
+    private readonly Mock<IHostCapabilities> _mockCapabilities = new();
+    private readonly List<(ProcessStartInfo StartInfo, bool CaptureOutput)> _invocations = new();
+    private WsbInvocationResult _nextResult = new(0, string.Empty, string.Empty);
+
+    private WsbSessionManager CreateSut(bool wsbExeExists = true)
+    {
+        return new WsbSessionManager(
+            _mockCapabilities.Object,
+            wsbExecutableExists: () => wsbExeExists,
+            invoker: CaptureInvoker);
+    }
+
+    private Task<WsbInvocationResult> CaptureInvoker(
+        ProcessStartInfo startInfo,
+        bool captureOutput,
+        CancellationToken cancellationToken)
+    {
+        _invocations.Add((startInfo, captureOutput));
+        return Task.FromResult(_nextResult);
+    }
+
+    private void ArrangeAvailability(FeatureStatus status)
+    {
+        _mockCapabilities
+            .Setup(c => c.GetAvailability(SandboxFeature.WsbCli))
+            .Returns(new FeatureAvailability(status));
+    }
+
+    [Fact]
+    public void IsSupported_WhenCliFeatureBlockedByOldBuild_ReturnsFalse()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.RequiresNewerWindows);
+        var sut = CreateSut();
+
+        // Act & Assert
+        sut.IsSupported.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsSupported_WhenCliExecutableMissing_ReturnsFalse()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        var sut = CreateSut(wsbExeExists: false);
+
+        // Act & Assert
+        sut.IsSupported.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsSupported_WhenFeatureAvailableAndExePresent_ReturnsTrue()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        var sut = CreateSut();
+
+        // Act & Assert
+        sut.IsSupported.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ListAsync_WhenNotSupported_ReturnsEmptyWithoutInvokingCli()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.RequiresNewerWindows);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.Sessions.Should().BeEmpty();
+        _invocations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListAsync_ParsesSessionsFromRawJson()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        var id = Guid.NewGuid();
+        _nextResult = new(0, $$"""
+            {"WindowsSandboxEnvironments":[{"Id":"{{id}}","Status":"running","Uptime":"0:05:12"}]}
+            """, string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.ErrorMessage.Should().BeNull();
+        result.Sessions.Should().ContainSingle();
+        result.Sessions[0].Id.Should().Be(id);
+        result.Sessions[0].State.Should().Be(SandboxSessionState.Running);
+        result.Sessions[0].Uptime.Should().Be(TimeSpan.FromMinutes(5).Add(TimeSpan.FromSeconds(12)));
+    }
+
+    [Fact]
+    public async Task ListAsync_WhenEnvironmentFieldsAreMissing_ToleratesThem()
+    {
+        // Arrange - --raw output may carry only the id on some builds
+        ArrangeAvailability(FeatureStatus.Available);
+        var id = Guid.NewGuid();
+        _nextResult = new(0, $$"""{"WindowsSandboxEnvironments":[{"Id":"{{id}}"}]}""", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.Sessions.Should().ContainSingle();
+        result.Sessions[0].State.Should().Be(SandboxSessionState.Unknown);
+        result.Sessions[0].Uptime.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ListAsync_WhenEnvironmentsArrayAbsent_ReturnsEmpty()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(0, "{}", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.Sessions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListAsync_WhenOutputIsNotJson_ReturnsError()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(0, "not json", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.Sessions.Should().BeEmpty();
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task ListAsync_WhenCliFails_ReturnsErrorWithStderr()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(1, string.Empty, "access denied");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.Sessions.Should().BeEmpty();
+        result.ErrorMessage.Should().Contain("access denied");
+    }
+
+    [Fact]
+    public async Task ListAsync_InvokesCliWithRawFlagBeforeListVerb()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(0, "{}", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        await sut.ListAsync();
+
+        // Assert
+        _invocations.Should().ContainSingle();
+        _invocations[0].StartInfo.ArgumentList.Should().Equal("--raw", "list");
+        _invocations[0].CaptureOutput.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StopAsync_PassesSessionIdAndReportsSuccess()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        var id = Guid.NewGuid();
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StopAsync(id);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        _invocations.Should().ContainSingle();
+        _invocations[0].StartInfo.ArgumentList.Should().Equal("--raw", "stop", "--id", id.ToString());
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenCliFails_ReturnsFailure()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(3, string.Empty, "no such sandbox");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StopAsync(Guid.NewGuid());
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("no such sandbox");
+    }
+
+    [Fact]
+    public async Task ConnectAsync_DoesNotCaptureStdout()
+    {
+        // Arrange - wsb connect returns immediately; capturing stdout would
+        // keep the pipe open and block until the remote window closes
+        ArrangeAvailability(FeatureStatus.Available);
+        var id = Guid.NewGuid();
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ConnectAsync(id);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        _invocations.Should().ContainSingle();
+        _invocations[0].StartInfo.ArgumentList.Should().Equal("--raw", "connect", "--id", id.ToString());
+        _invocations[0].CaptureOutput.Should().BeFalse();
+    }
+}
