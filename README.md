@@ -28,7 +28,8 @@ SandboxStudio is a .NET 10 and WinUI 3 source project for managing Windows Sandb
 
 - Displays saved profiles and supports refresh, creation of a basic profile, deletion with confirmation, and a launch action.
 - The card menu's **Edit Profile** dialog edits a profile's name, description, networking, vGPU, and memory. It validates changes and provides Save and Cancel; Cancel discards the draft.
-- Advanced configuration options, mapped-folder editing, `.wsb` export UI, profile duplication, and tag management are not wired into the dashboard.
+- The card menu also exports validated configurations to `.wsb` files through a file picker.
+- Advanced configuration options, mapped-folder editing, profile duplication, and tag management are not wired into the dashboard.
 
 The dashboard has been opened locally and displayed all three presets. Windows Sandbox launching and packaged-app runtime behavior have not been verified. The workflow below produces a packaging preview only; it does not publish a GitHub release.
 

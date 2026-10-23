@@ -34,6 +34,7 @@ public partial class App : Application
                 // Core Services
                 services.AddSingleton<IWsbSerializer, WsbSerializer>();
                 services.AddSingleton<IWsbValidator, WsbValidator>();
+                services.AddSingleton<WsbExportService>();
                 services.AddSingleton<IProfileRepository, JsonProfileRepository>();
                 services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
 

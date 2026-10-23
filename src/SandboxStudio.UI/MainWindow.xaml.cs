@@ -3,7 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Serialization;
+using SandboxStudio.Core.Validation;
 using SandboxStudio.UI.ViewModels;
+using Windows.Storage.Pickers;
 
 namespace SandboxStudio.UI;
 
@@ -226,6 +229,56 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async void OnExportClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem { Tag: SandboxProfile profile })
+        {
+            return;
+        }
+
+        try
+        {
+            var validator = App.Host.Services.GetRequiredService<IWsbValidator>();
+            var validationResult = validator.Validate(profile.Configuration);
+            if (!validationResult.IsValid)
+            {
+                ViewModel.StatusMessage = $"Export blocked: {FormatValidationErrors(validationResult)}";
+                return;
+            }
+
+            var picker = new FileSavePicker
+            {
+                SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+                SuggestedFileName = "SandboxProfile"
+            };
+            picker.FileTypeChoices.Add("Windows Sandbox configuration", new List<string> { ".wsb" });
+            WinRT.Interop.InitializeWithWindow.Initialize(
+                picker,
+                WinRT.Interop.WindowNative.GetWindowHandle(this));
+
+            var file = await picker.PickSaveFileAsync();
+            if (file is null)
+            {
+                return;
+            }
+
+            var exportService = App.Host.Services.GetRequiredService<WsbExportService>();
+            var result = await exportService.ExportAsync(profile.Configuration, file.Path);
+            if (!result.IsValid)
+            {
+                ViewModel.StatusMessage = $"Export blocked: {FormatValidationErrors(result)}";
+                return;
+            }
+
+            var warningCount = result.Messages.Count(message => message.Severity == ValidationSeverity.Warning);
+            ViewModel.StatusMessage = $"Exported .wsb to {file.Path} (warnings: {warningCount}).";
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = $"Export error: {ex.Message}";
+        }
+    }
+
     private static ComboBox CreateTriStateComboBox(string header, string? selectedValue)
     {
         var comboBox = new ComboBox
@@ -263,4 +316,11 @@ public sealed partial class MainWindow : Window
 
     private static string? GetTriStateValue(ComboBox comboBox) =>
         (comboBox.SelectedItem as ComboBoxItem)?.Tag as string;
+
+    private static string FormatValidationErrors(ValidationResult result) =>
+        string.Join(
+            "; ",
+            result.Messages
+                .Where(message => message.Severity == ValidationSeverity.Error)
+                .Select(message => $"{message.PropertyName}: {message.Message}"));
 }
