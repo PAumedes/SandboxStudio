@@ -30,6 +30,12 @@ public enum SandboxFeature
     /// <summary>Camera input (<c>AllowVideoInput</c> policy).</summary>
     VideoInput,
 
+    /// <summary>Hardened RDP session settings (<c>ProtectedClient</c> element, Windows 10 2004+).</summary>
+    ProtectedClient,
+
+    /// <summary>Explicit sandbox memory assignment (<c>MemoryInMB</c> element, Windows 10 2004+).</summary>
+    MemoryInMB,
+
     /// <summary>Printer sharing (<c>AllowPrinterRedirection</c> policy).</summary>
     PrinterRedirection,
 

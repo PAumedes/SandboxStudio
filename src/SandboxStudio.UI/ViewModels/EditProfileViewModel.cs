@@ -61,6 +61,12 @@ public sealed partial class EditProfileViewModel : ObservableObject
         _capabilities.GetPolicyOverrides(Profile.Configuration);
 
     /// <summary>
+    /// Returns whether <paramref name="feature"/> can be used on this host and why not.
+    /// </summary>
+    public FeatureAvailability GetFeatureAvailability(SandboxFeature feature) =>
+        _capabilities.GetAvailability(feature);
+
+    /// <summary>
     /// Sets the active profile for editing and populates observable fields.
     /// </summary>
     public void SetProfile(SandboxProfile profile)

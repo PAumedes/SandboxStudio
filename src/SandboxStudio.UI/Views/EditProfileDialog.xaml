@@ -13,6 +13,11 @@
     <ContentDialog.Resources>
         <conv:TriStateIndexConverter x:Key="TriStateIndex" />
         <conv:MissingHostFolderVisibilityConverter x:Key="MissingHostFolderVisibility" />
+        <Style x:Key="AvailabilityCaption" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{ThemeResource SystemFillColorCautionBrush}" />
+        </Style>
     </ContentDialog.Resources>
 
     <ScrollViewer x:Name="DialogScrollViewer" MaxHeight="480" VerticalScrollBarVisibility="Auto">
@@ -51,6 +56,10 @@
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
+            <TextBlock
+                x:Name="NetworkingAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
             <ComboBox Header="vGPU" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VGpu, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
@@ -58,8 +67,16 @@
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
+            <TextBlock
+                x:Name="VGpuAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
 
             <TextBox x:Name="MemoryTextBox" Header="Memory (MB)" PlaceholderText="Optional" />
+            <TextBlock
+                x:Name="MemoryAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
 
             <TextBlock Text="Devices and security" />
             <TextBlock
@@ -73,6 +90,10 @@
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
+            <TextBlock
+                x:Name="AudioInputAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
             <ComboBox Header="Camera input" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VideoInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
@@ -80,6 +101,10 @@
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
+            <TextBlock
+                x:Name="VideoInputAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
             <ComboBox Header="Protected client" HorizontalAlignment="Stretch"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ProtectedClient, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
@@ -87,6 +112,10 @@
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
+            <TextBlock
+                x:Name="ProtectedClientAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
             <ComboBox Header="Clipboard sharing" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ClipboardRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
@@ -94,6 +123,10 @@
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
+            <TextBlock
+                x:Name="ClipboardAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
             <ComboBox Header="Printer sharing" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.PrinterRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
@@ -101,6 +134,10 @@
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
+            <TextBlock
+                x:Name="PrinterAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
 
             <TextBox
                 x:Name="StartupCommandTextBox"
@@ -111,6 +148,18 @@
             <TextBlock
                 Text="Mapped folders share host data with Windows Sandbox. Keep them read-only unless writable access is necessary."
                 TextWrapping="Wrap" />
+            <TextBlock
+                x:Name="MappedFoldersAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
+            <TextBlock
+                x:Name="WritableMappedFoldersAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
+            <TextBlock
+                x:Name="MappedFolderEnvVarsAvailabilityText"
+                Style="{StaticResource AvailabilityCaption}"
+                Visibility="Collapsed" />
 
             <ItemsControl ItemsSource="{x:Bind ViewModel.MappedFolders, Mode=OneWay}">
                 <ItemsControl.ItemTemplate>

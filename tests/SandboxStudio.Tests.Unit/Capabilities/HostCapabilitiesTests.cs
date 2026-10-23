@@ -575,6 +575,58 @@ public sealed class HostCapabilitiesTests
         result.Status.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData(SandboxFeature.AudioInput)]
+    [InlineData(SandboxFeature.VideoInput)]
+    [InlineData(SandboxFeature.PrinterRedirection)]
+    [InlineData(SandboxFeature.ClipboardRedirection)]
+    [InlineData(SandboxFeature.ProtectedClient)]
+    [InlineData(SandboxFeature.MemoryInMB)]
+    public void GetAvailability_Windows10Before2004_FeatureRequiresNewerWindows(SandboxFeature feature)
+    {
+        // Arrange — the element was introduced in Windows 10 2004 (build 19041)
+        var sut = CreateSut(osBuild: 19040);
+
+        // Act
+        var result = sut.GetAvailability(feature);
+
+        // Assert
+        result.Status.Should().Be(FeatureStatus.RequiresNewerWindows);
+        result.RequiredBuild.Should().Be(19041);
+    }
+
+    [Theory]
+    [InlineData(SandboxFeature.AudioInput)]
+    [InlineData(SandboxFeature.VideoInput)]
+    [InlineData(SandboxFeature.PrinterRedirection)]
+    [InlineData(SandboxFeature.ClipboardRedirection)]
+    [InlineData(SandboxFeature.ProtectedClient)]
+    [InlineData(SandboxFeature.MemoryInMB)]
+    public void GetAvailability_Windows10At2004_FeatureIsAvailable(SandboxFeature feature)
+    {
+        // Arrange
+        var sut = CreateSut(osBuild: 19041);
+
+        // Act
+        var result = sut.GetAvailability(feature);
+
+        // Assert
+        result.Status.Should().Be(FeatureStatus.Available);
+    }
+
+    [Fact]
+    public void GetAvailability_Windows10Before2004_MappedFoldersElementStillAvailable()
+    {
+        // Arrange — mapped folders shipped in the original 18342 .wsb spec
+        var sut = CreateSut(osBuild: 19040);
+
+        // Act
+        var result = sut.GetAvailability(SandboxFeature.MappedFolders);
+
+        // Assert
+        result.Status.Should().Be(FeatureStatus.Available);
+    }
+
     [Fact]
     public void GetAvailability_WhenFeatureIsUnknown_ThrowsArgumentOutOfRange()
     {

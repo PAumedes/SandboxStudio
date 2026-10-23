@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Validation;
 using SandboxStudio.UI.ViewModels;
@@ -52,6 +53,41 @@ public sealed partial class EditProfileDialog : ContentDialog
 
         RefreshPolicyOverrideInfoBar();
         UpdateWritableMappingControls();
+        ApplyAvailabilityCaptions();
+    }
+
+    private void ApplyAvailabilityCaptions()
+    {
+        ApplyAvailabilityCaption(NetworkingAvailabilityText, SandboxFeature.Networking);
+        ApplyAvailabilityCaption(VGpuAvailabilityText, SandboxFeature.VGpu);
+        ApplyAvailabilityCaption(AudioInputAvailabilityText, SandboxFeature.AudioInput);
+        ApplyAvailabilityCaption(VideoInputAvailabilityText, SandboxFeature.VideoInput);
+        ApplyAvailabilityCaption(ClipboardAvailabilityText, SandboxFeature.ClipboardRedirection);
+        ApplyAvailabilityCaption(PrinterAvailabilityText, SandboxFeature.PrinterRedirection);
+        ApplyAvailabilityCaption(ProtectedClientAvailabilityText, SandboxFeature.ProtectedClient);
+        ApplyAvailabilityCaption(MemoryAvailabilityText, SandboxFeature.MemoryInMB);
+        ApplyAvailabilityCaption(MappedFoldersAvailabilityText, SandboxFeature.MappedFolders, "Mapped folders");
+        if (ViewModel.GetFeatureAvailability(SandboxFeature.MappedFolders).Status == FeatureStatus.Available)
+        {
+            // When all folder mapping is unavailable, the writable-specific caption is redundant.
+            ApplyAvailabilityCaption(WritableMappedFoldersAvailabilityText, SandboxFeature.WritableMappedFolders, "Writable mapped folders");
+        }
+
+        ApplyAvailabilityCaption(MappedFolderEnvVarsAvailabilityText, SandboxFeature.MappedFolderEnvironmentVariables, "Environment variables in host paths");
+    }
+
+    private void ApplyAvailabilityCaption(TextBlock caption, SandboxFeature feature, string? label = null)
+    {
+        var availability = ViewModel.GetFeatureAvailability(feature);
+        if (availability.Status == FeatureStatus.Available)
+        {
+            return;
+        }
+
+        caption.Text = label is null
+            ? $"\u26A0 {availability.Reason}"
+            : $"\u26A0 {label}: {availability.Reason}";
+        caption.Visibility = Visibility.Visible;
     }
 
     private void RefreshPolicyOverrideInfoBar()
