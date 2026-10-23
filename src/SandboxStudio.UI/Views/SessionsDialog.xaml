@@ -30,6 +30,8 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <FontIcon
                             Grid.Column="0"
@@ -51,6 +53,16 @@
                             Click="OnConnectClicked" />
                         <Button
                             Grid.Column="3"
+                            Content="Exec…"
+                            IsEnabled="{Binding CanExec}"
+                            Click="OnExecClicked" />
+                        <Button
+                            Grid.Column="4"
+                            Content="IP"
+                            IsEnabled="{Binding CanExec}"
+                            Click="OnIpClicked" />
+                        <Button
+                            Grid.Column="5"
                             Content="Stop"
                             IsEnabled="{Binding CanStop}"
                             Click="OnStopClicked" />

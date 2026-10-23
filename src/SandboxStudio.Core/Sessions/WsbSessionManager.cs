@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using SandboxStudio.Core.Capabilities;
@@ -131,6 +132,79 @@ public sealed class WsbSessionManager : ISandboxSessionManager
         catch (JsonException)
         {
             return WsbStartResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<WsbExecResult> ExecAsync(
+        Guid id,
+        string command,
+        WsbRunAs runAs,
+        string? workingDirectory = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(command);
+        if (!IsSupported)
+        {
+            return WsbExecResult.Failure("The Windows Sandbox CLI is not available on this host.");
+        }
+
+        var arguments = new List<string>
+        {
+            "exec", "--id", id.ToString(), "--command", command, "--run-as", runAs.ToString()
+        };
+        if (!string.IsNullOrWhiteSpace(workingDirectory))
+        {
+            arguments.AddRange(["--working-directory", workingDirectory]);
+        }
+
+        var invocation = await InvokeAsync(InvocationTimeout, captureOutput: true, cancellationToken, [.. arguments]);
+        if (invocation.ExitCode != 0)
+        {
+            return WsbExecResult.Failure(DescribeFailure("exec", invocation));
+        }
+
+        try
+        {
+            var response = JsonSerializer.Deserialize<ExecResponseDto>(invocation.StdOut, JsonOptions);
+            return response?.ExitCode is { } exitCode
+                ? WsbExecResult.Ran(exitCode)
+                : WsbExecResult.Failure("The Windows Sandbox CLI did not report an exit code.");
+        }
+        catch (JsonException)
+        {
+            return WsbExecResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<WsbIpResult> GetIpAddressAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (!IsSupported)
+        {
+            return WsbIpResult.Failure("The Windows Sandbox CLI is not available on this host.");
+        }
+
+        var invocation = await InvokeAsync(InvocationTimeout, captureOutput: true, cancellationToken, "ip", "--id", id.ToString());
+        if (invocation.ExitCode != 0)
+        {
+            return WsbIpResult.Failure(DescribeFailure("ip", invocation));
+        }
+
+        try
+        {
+            var response = JsonSerializer.Deserialize<IpResponseDto>(invocation.StdOut, JsonOptions);
+            var addresses = response?.Networks
+                ?.Select(network => IPAddress.TryParse(network.IpV4Address, out var address) ? address : null)
+                .Where(address => address is not null)
+                .Cast<IPAddress>()
+                .ToList() ?? [];
+
+            return WsbIpResult.Success(addresses);
+        }
+        catch (JsonException)
+        {
+            return WsbIpResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.");
         }
     }
 
@@ -311,6 +385,21 @@ public sealed class WsbSessionManager : ISandboxSessionManager
     private sealed class StartResponseDto
     {
         public Guid Id { get; set; }
+    }
+
+    private sealed class ExecResponseDto
+    {
+        public int? ExitCode { get; set; }
+    }
+
+    private sealed class IpResponseDto
+    {
+        public List<IpNetworkDto>? Networks { get; set; }
+    }
+
+    private sealed class IpNetworkDto
+    {
+        public string? IpV4Address { get; set; }
     }
 
     private sealed class EnvironmentDto

@@ -32,7 +32,7 @@ SandboxStudio is a .NET 10 and WinUI 3 source project for managing Windows Sandb
 - The card menu duplicates a profile under a unique "(copy)"-suffixed name with fresh creation metadata.
 - The toolbar imports existing `.wsb` files into profiles, reporting validation errors and warnings on import.
 - Profiles carry comma-separated tags edited in the dialog and shown on each card; the header filter box narrows the dashboard to profiles containing every entered tag.
-- The **Sessions** dialog lists live sandbox sessions reported by the `wsb` CLI (Windows 11 24H2+) with status and uptime, and can connect to or stop a session.
+- The **Sessions** dialog lists live sandbox sessions reported by the `wsb` CLI (Windows 11 24H2+) with status and uptime, and can connect to, stop, run commands inside, or query the IP of a session.
 - All currently modeled `.wsb` settings are exposed above.
 
 The dashboard has been opened locally and displayed the seeded presets. Windows Sandbox launching, packaged-app runtime, and packaging on a clean host have not been verified. The workflow below produces a packaging preview only; it does not publish a GitHub release.

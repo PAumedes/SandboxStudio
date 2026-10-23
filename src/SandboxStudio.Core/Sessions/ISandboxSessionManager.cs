@@ -18,6 +18,21 @@ public interface ISandboxSessionManager
     /// </summary>
     Task<WsbStartResult> StartAsync(string configurationXml, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Runs a command inside a session (<c>wsb exec</c>). Process output cannot be
+    /// captured; only the in-sandbox exit code comes back. <see cref="WsbRunAs.ExistingLogin"/>
+    /// requires an active remote session (see <see cref="ConnectAsync"/>).
+    /// </summary>
+    Task<WsbExecResult> ExecAsync(
+        Guid id,
+        string command,
+        WsbRunAs runAs,
+        string? workingDirectory = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Reports the session's IP addresses (<c>wsb ip</c>).</summary>
+    Task<WsbIpResult> GetIpAddressAsync(Guid id, CancellationToken cancellationToken = default);
+
     /// <summary>Stops a session, releasing its resources and closing its window.</summary>
     Task<WsbOperationResult> StopAsync(Guid id, CancellationToken cancellationToken = default);
 

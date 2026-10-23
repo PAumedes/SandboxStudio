@@ -84,6 +84,149 @@ public sealed partial class SessionsDialog : ContentDialog
         }
     }
 
+    private void OnExecClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: SessionItem item } button || _busy)
+        {
+            return;
+        }
+
+        // A Flyout rather than a nested ContentDialog — only one ContentDialog
+        // can be open in a window at a time.
+        var commandBox = new TextBox
+        {
+            Header = "Command",
+            PlaceholderText = "app.exe or a built-in command",
+            MinWidth = 320
+        };
+        var runAsBox = new ComboBox
+        {
+            Header = "Run as",
+            SelectedIndex = 0,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        runAsBox.Items.Add(new ComboBoxItem { Tag = "System", Content = "System" });
+        runAsBox.Items.Add(new ComboBoxItem { Tag = "ExistingLogin", Content = "Existing login (requires a connected session)" });
+        var workDirBox = new TextBox
+        {
+            Header = "Working directory (optional)",
+            PlaceholderText = @"C:\Tools"
+        };
+        var note = new TextBlock
+        {
+            Text = "Command output cannot be captured; only the exit code comes back.",
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12
+        };
+        var themeKey = ActualTheme.ToString();
+        if (Application.Current.Resources.ThemeDictionaries.TryGetValue(themeKey, out var themeDict) &&
+            themeDict is ResourceDictionary resources &&
+            resources.TryGetValue("TextFillColorSecondaryBrush", out var brushValue) &&
+            brushValue is Brush secondaryBrush)
+        {
+            note.Foreground = secondaryBrush;
+        }
+        var runButton = new Button
+        {
+            Content = "Run",
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var panel = new StackPanel { Spacing = 10 };
+        panel.Children.Add(commandBox);
+        panel.Children.Add(runAsBox);
+        panel.Children.Add(workDirBox);
+        panel.Children.Add(note);
+        panel.Children.Add(runButton);
+
+        var flyout = new Flyout { Content = panel };
+        runButton.Click += async (_, _) =>
+        {
+            if (_busy)
+            {
+                // Keep the flyout open so the user does not lose typed input.
+                ShowStatus(InfoBarSeverity.Warning, "Another operation is in progress.");
+                return;
+            }
+
+            var command = commandBox.Text.Trim();
+            if (command.Length == 0)
+            {
+                ShowStatus(InfoBarSeverity.Warning, "Enter a command to run.");
+                return;
+            }
+
+            flyout.Hide();
+            var runAs = runAsBox.SelectedItem is ComboBoxItem { Tag: "ExistingLogin" }
+                ? WsbRunAs.ExistingLogin
+                : WsbRunAs.System;
+            var workingDir = string.IsNullOrWhiteSpace(workDirBox.Text) ? null : workDirBox.Text.Trim();
+
+            _busy = true;
+            button.IsEnabled = false;
+            try
+            {
+                var result = await _sessions.ExecAsync(
+                    item.Session.Id, command, runAs, workingDir, _closedCts.Token);
+                if (result.ExitCode is { } exitCode)
+                {
+                    ShowStatus(
+                        exitCode == 0 ? InfoBarSeverity.Success : InfoBarSeverity.Warning,
+                        $"Command finished with exit code {exitCode}.");
+                }
+                else
+                {
+                    ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? "The command could not be run.");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            finally
+            {
+                button.IsEnabled = true;
+                _busy = false;
+            }
+        };
+
+        flyout.ShowAt(button);
+    }
+
+    private async void OnIpClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: SessionItem item } button || _busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        button.IsEnabled = false;
+        try
+        {
+            var result = await _sessions.GetIpAddressAsync(item.Session.Id, _closedCts.Token);
+            if (result.ErrorMessage is not null)
+            {
+                ShowStatus(InfoBarSeverity.Error, result.ErrorMessage);
+                return;
+            }
+
+            var index = _items.IndexOf(item);
+            if (index >= 0)
+            {
+                _items[index] = new SessionItem(
+                    item.Session,
+                    result.Addresses.Count == 0 ? "no IP reported" : string.Join(", ", result.Addresses));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            button.IsEnabled = true;
+            _busy = false;
+        }
+    }
+
     private async void OnConnectClicked(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { DataContext: SessionItem item } button || _busy)
@@ -151,14 +294,15 @@ public sealed partial class SessionsDialog : ContentDialog
 
     private sealed class SessionItem
     {
-        public SessionItem(SandboxSession session)
+        public SessionItem(SandboxSession session, string? ipText = null)
         {
             Session = session;
             IdShort = session.Id.ToString("N")[..8];
             StateGlyph = session.State == SandboxSessionState.Running ? "\uE768" : "\uE71A";
             CanConnect = session.State is SandboxSessionState.Running or SandboxSessionState.Unknown;
+            CanExec = session.State != SandboxSessionState.Stopped;
             CanStop = session.State != SandboxSessionState.Stopped;
-            DetailText = session switch
+            var detail = session switch
             {
                 { State: SandboxSessionState.Running, Uptime: { } uptime } =>
                     $"Running \u00B7 up {FormatUptime(uptime)}",
@@ -166,6 +310,7 @@ public sealed partial class SessionsDialog : ContentDialog
                 { State: SandboxSessionState.Stopped } => "Stopped",
                 _ => "State not reported"
             };
+            DetailText = ipText is null ? detail : $"{detail} \u00B7 {ipText}";
             StateBrush = session.State == SandboxSessionState.Stopped
                 ? new SolidColorBrush(Microsoft.UI.Colors.Gray)
                 : new SolidColorBrush(Microsoft.UI.Colors.Green);
@@ -180,6 +325,8 @@ public sealed partial class SessionsDialog : ContentDialog
         public string DetailText { get; }
 
         public bool CanConnect { get; }
+
+        public bool CanExec { get; }
 
         public bool CanStop { get; }
 
