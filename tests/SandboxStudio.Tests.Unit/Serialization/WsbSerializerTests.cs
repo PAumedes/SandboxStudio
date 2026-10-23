@@ -99,6 +99,11 @@ public sealed class WsbSerializerTests
         var restored = _sut.Deserialize(xml);
 
         // Assert
+        xml.Should().Contain("<AudioInput>Disable</AudioInput>");
+        xml.Should().Contain("<VideoInput>Disable</VideoInput>");
+        xml.Should().Contain("<ProtectedClient>Enable</ProtectedClient>");
+        xml.Should().Contain("<ClipboardRedirection>Disable</ClipboardRedirection>");
+        xml.Should().Contain("<PrinterRedirection>Disable</PrinterRedirection>");
         restored.VGpu.Should().Be(original.VGpu);
         restored.Networking.Should().Be(original.Networking);
         restored.MemoryInMB.Should().Be(original.MemoryInMB);
@@ -146,19 +151,18 @@ public sealed class WsbSerializerTests
         xml.Should().NotContain("<SandboxFolder>");
     }
 
-    [Fact]
-    public void Serialize_WhenLogonCommandHasEmptyCommand_OmitsLogonCommandElement()
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public void Serialize_WhenLogonCommandIsBlankOrWhitespace_OmitsLogonCommandElement(string command)
     {
-        // Arrange
         var config = new WsbConfiguration
         {
-            LogonCommand = new WsbLogonCommand { Command = "   " }
+            LogonCommand = new WsbLogonCommand { Command = command }
         };
 
-        // Act
         var xml = _sut.Serialize(config);
 
-        // Assert
         xml.Should().NotContain("<LogonCommand>");
     }
 

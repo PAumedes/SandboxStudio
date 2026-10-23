@@ -111,23 +111,55 @@ public sealed class WsbValidatorTests
     }
 
     [Fact]
-    public void Validate_WhenCommandExceedsLimit_ReturnsError()
+    public void Validate_WhenCommandIsAtMaximumLength_ReturnsValid()
     {
-        // Arrange
         var config = new WsbConfiguration
         {
             LogonCommand = new WsbLogonCommand
             {
-                Command = new string('A', 8200) // Exceeds 8191
+                Command = new string('A', 8191)
             }
         };
 
-        // Act
         var result = _sut.Validate(config);
 
-        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Messages.Should().NotContain(m =>
+            m.Severity == ValidationSeverity.Error &&
+            m.PropertyName == nameof(WsbConfiguration.LogonCommand));
+    }
+
+    [Fact]
+    public void Validate_WhenCommandIsOneCharacterOverMaximumLength_ReturnsError()
+    {
+        var config = new WsbConfiguration
+        {
+            LogonCommand = new WsbLogonCommand
+            {
+                Command = new string('A', 8192)
+            }
+        };
+
+        var result = _sut.Validate(config);
+
         result.IsValid.Should().BeFalse();
         result.Messages.Should().Contain(m => m.Severity == ValidationSeverity.Error && m.PropertyName == nameof(WsbConfiguration.LogonCommand));
+    }
+
+    [Fact]
+    public void Validate_WhenLogonCommandIsWhitespace_DoesNotInvalidateConfiguration()
+    {
+        var config = new WsbConfiguration
+        {
+            LogonCommand = new WsbLogonCommand { Command = " \t " }
+        };
+
+        var result = _sut.Validate(config);
+
+        result.IsValid.Should().BeTrue();
+        result.Messages.Should().NotContain(m =>
+            m.Severity == ValidationSeverity.Error &&
+            m.PropertyName == nameof(WsbConfiguration.LogonCommand));
     }
 
     [Fact]

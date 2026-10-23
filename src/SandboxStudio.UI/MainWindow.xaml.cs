@@ -133,6 +133,32 @@ public sealed partial class MainWindow : Window
             PlaceholderText = "Optional",
             Text = editViewModel.Profile.Configuration.MemoryInMB?.ToString(CultureInfo.InvariantCulture) ?? string.Empty
         };
+        var audioInputComboBox = CreateTriStateComboBox(
+            "Microphone input",
+            editViewModel.Profile.Configuration.AudioInput);
+        var videoInputComboBox = CreateTriStateComboBox(
+            "Camera input",
+            editViewModel.Profile.Configuration.VideoInput);
+        var protectedClientComboBox = CreateTriStateComboBox(
+            "Protected client",
+            editViewModel.Profile.Configuration.ProtectedClient);
+        var clipboardRedirectionComboBox = CreateTriStateComboBox(
+            "Clipboard sharing",
+            editViewModel.Profile.Configuration.ClipboardRedirection);
+        var printerRedirectionComboBox = CreateTriStateComboBox(
+            "Printer sharing",
+            editViewModel.Profile.Configuration.PrinterRedirection);
+        var devicesAndSecurityWarning = new TextBlock
+        {
+            Text = "Enabling host devices, clipboard, or printers increases sharing with the host.",
+            TextWrapping = TextWrapping.Wrap
+        };
+        var startupCommandTextBox = new TextBox
+        {
+            Header = "Startup command (runs inside the sandbox at logon)",
+            PlaceholderText = "Optional",
+            Text = editViewModel.Profile.Configuration.LogonCommand?.Command ?? string.Empty
+        };
         var mappedFolderRows = new List<(
             WsbMappedFolder Folder,
             TextBox HostFolderTextBox,
@@ -260,6 +286,14 @@ public sealed partial class MainWindow : Window
         dialogContent.Children.Add(networkingComboBox);
         dialogContent.Children.Add(vGpuComboBox);
         dialogContent.Children.Add(memoryTextBox);
+        dialogContent.Children.Add(new TextBlock { Text = "Devices and security" });
+        dialogContent.Children.Add(devicesAndSecurityWarning);
+        dialogContent.Children.Add(audioInputComboBox);
+        dialogContent.Children.Add(videoInputComboBox);
+        dialogContent.Children.Add(protectedClientComboBox);
+        dialogContent.Children.Add(clipboardRedirectionComboBox);
+        dialogContent.Children.Add(printerRedirectionComboBox);
+        dialogContent.Children.Add(startupCommandTextBox);
         dialogContent.Children.Add(new TextBlock { Text = "Mapped folders" });
         dialogContent.Children.Add(mappedFoldersWarning);
         dialogContent.Children.Add(mappedFoldersPanel);
@@ -316,6 +350,15 @@ public sealed partial class MainWindow : Window
                 draft.Configuration.Networking = GetTriStateValue(networkingComboBox);
                 draft.Configuration.VGpu = GetTriStateValue(vGpuComboBox);
                 draft.Configuration.MemoryInMB = memoryInMb;
+                draft.Configuration.AudioInput = GetTriStateValue(audioInputComboBox);
+                draft.Configuration.VideoInput = GetTriStateValue(videoInputComboBox);
+                draft.Configuration.ProtectedClient = GetTriStateValue(protectedClientComboBox);
+                draft.Configuration.ClipboardRedirection = GetTriStateValue(clipboardRedirectionComboBox);
+                draft.Configuration.PrinterRedirection = GetTriStateValue(printerRedirectionComboBox);
+                var startupCommand = startupCommandTextBox.Text;
+                draft.Configuration.LogonCommand = string.IsNullOrWhiteSpace(startupCommand)
+                    ? null
+                    : new WsbLogonCommand { Command = startupCommand };
                 foreach (var row in mappedFolderRows)
                 {
                     row.Folder.HostFolder = row.HostFolderTextBox.Text;
