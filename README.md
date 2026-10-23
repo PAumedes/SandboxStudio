@@ -21,7 +21,7 @@ SandboxStudio is a .NET 10 and WinUI 3 source project for managing Windows Sandb
 ### Core
 
 - Profile models, validation, and `.wsb` XML serialization.
-- Local JSON profile storage and three built-in profiles, initialized once for a new profile store.
+- Local JSON profile storage and five built-in presets, seeded for a new profile store; stores seeded by an earlier release receive presets added since then, while manually curated stores are left untouched.
 - A launcher that validates a profile, writes a temporary `.wsb` file, and asks Windows to open it when Windows Sandbox is available.
 
 ### Dashboard
@@ -34,7 +34,7 @@ SandboxStudio is a .NET 10 and WinUI 3 source project for managing Windows Sandb
 - Profiles carry comma-separated tags edited in the dialog and shown on each card; the header filter box narrows the dashboard to profiles containing every entered tag.
 - All currently modeled `.wsb` settings are exposed above.
 
-The dashboard has been opened locally and displayed all three presets. Windows Sandbox launching, packaged-app runtime, and packaging on a clean host have not been verified. The workflow below produces a packaging preview only; it does not publish a GitHub release.
+The dashboard has been opened locally and displayed the seeded presets. Windows Sandbox launching, packaged-app runtime, and packaging on a clean host have not been verified. The workflow below produces a packaging preview only; it does not publish a GitHub release.
 
 ## Architecture
 

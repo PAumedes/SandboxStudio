@@ -28,7 +28,9 @@ public interface IProfileRepository
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Ensures the built-in presets have been initialized for a new profile store.
+    /// Ensures the built-in presets have been seeded. Fresh stores receive all presets;
+    /// stores seeded by an earlier release receive only presets introduced since then;
+    /// manually curated stores are left untouched.
     /// </summary>
     Task EnsureDefaultPresetsAsync(CancellationToken cancellationToken = default);
 

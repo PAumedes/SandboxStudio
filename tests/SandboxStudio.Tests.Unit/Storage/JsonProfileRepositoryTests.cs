@@ -7,6 +7,13 @@ namespace SandboxStudio.Tests.Unit.Storage;
 
 public sealed class JsonProfileRepositoryTests : IDisposable
 {
+    private static readonly Guid[] V1PresetIds =
+    [
+        Guid.Parse("11111111-1111-1111-1111-111111111111"),
+        Guid.Parse("22222222-2222-2222-2222-222222222222"),
+        Guid.Parse("33333333-3333-3333-3333-333333333333")
+    ];
+
     private readonly string _tempDir;
     private readonly JsonProfileRepository _sut;
 
@@ -180,6 +187,163 @@ public sealed class JsonProfileRepositoryTests : IDisposable
 
         (await reopenedRepository.GetAllAsync()).Should().BeEmpty();
         File.Exists(Path.Combine(_tempDir, ".initialized")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenStoreWasSeededAtVersion1_SeedsOnlyNewlyIntroducedPresets()
+    {
+        // Arrange - a store seeded before the new presets existed carries version "1"
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), "1");
+        var newPresetIds = _sut.GetDefaultPresets()
+            .Select(p => p.Id)
+            .Except(V1PresetIds)
+            .ToList();
+        newPresetIds.Should().NotBeEmpty("the seed catalog must grow for this test to mean anything");
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+        var profiles = await _sut.GetAllAsync();
+
+        // Assert - only presets introduced after version 1 appear; deleted v1 presets stay deleted
+        profiles.Select(p => p.Id).Should().BeEquivalentTo(newPresetIds);
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("2");
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenMarkerIsEmpty_TreatsStoreAsVersion1()
+    {
+        // Arrange - pre-versioning stores wrote an empty marker file
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), string.Empty);
+        var newPresetIds = _sut.GetDefaultPresets()
+            .Select(p => p.Id)
+            .Except(V1PresetIds)
+            .ToList();
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+        var profiles = await _sut.GetAllAsync();
+
+        // Assert
+        profiles.Select(p => p.Id).Should().BeEquivalentTo(newPresetIds);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenNewPresetIsDeletedAfterSeeding_DoesNotResurrect()
+    {
+        // Arrange
+        await _sut.EnsureDefaultPresetsAsync();
+        var seededIds = (await _sut.GetAllAsync()).Select(p => p.Id).ToList();
+        var newPresetId = seededIds.Except(V1PresetIds).First();
+        (await _sut.DeleteAsync(newPresetId)).Should().BeTrue();
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+
+        // Assert
+        (await _sut.GetAllAsync()).Select(p => p.Id).Should().NotContain(newPresetId);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenMarkerIsEmpty_PinsStoreAsUpgraded()
+    {
+        // Arrange - pre-versioning stores wrote an empty marker file
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), string.Empty);
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+
+        // Assert - the upgrade commits the current seed version
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("2");
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenCuratedStoreCarriesPreVersioningMarker_LeavesStoreUntouched()
+    {
+        // Arrange - builds before seed versioning wrote an empty marker even for
+        // curated stores; a store holding no preset files is still curated
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), string.Empty);
+        var customProfile = new SandboxProfile { Name = "Hand Curated" };
+        await _sut.SaveAsync(customProfile);
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+        var profiles = await _sut.GetAllAsync();
+
+        // Assert
+        profiles.Select(p => p.Id).Should().BeEquivalentTo([customProfile.Id]);
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("2");
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenV1UpgradeIsInterrupted_ResumeSeedsNewPresets()
+    {
+        // Arrange - a crash left .initializing behind before the v1 upgrade finished
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), "1");
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initializing"), string.Empty);
+        var newPresetIds = _sut.GetDefaultPresets()
+            .Select(p => p.Id)
+            .Except(V1PresetIds)
+            .ToList();
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+        var profiles = await _sut.GetAllAsync();
+
+        // Assert
+        profiles.Select(p => p.Id).Should().BeEquivalentTo(newPresetIds);
+        File.Exists(Path.Combine(_tempDir, ".initializing")).Should().BeFalse();
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("2");
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenMarkerContainsUnparsableText_TreatsStoreAsVersion1()
+    {
+        // Arrange - garbage marker content falls back to the pre-versioning baseline
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), "not-a-version");
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+        var profiles = await _sut.GetAllAsync();
+
+        // Assert - only post-version-1 presets reach the empty store
+        profiles.Select(p => p.Id).Should().NotIntersectWith(V1PresetIds);
+        profiles.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenMarkerContainsNegativeVersion_SeedsAllPresets()
+    {
+        // Arrange - a negative (corrupt) version is below every introduced-in level
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), "-1");
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+        var profiles = await _sut.GetAllAsync();
+
+        // Assert - the empty store is treated as fresh: every preset is seeded
+        profiles.Should().HaveCount(_sut.GetDefaultPresets().Count);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenV1StoreMixesPresetAndCustomProfiles_UpgradesAndKeepsCustom()
+    {
+        // Arrange - preset-file presence (not mere population) drives the v1 upgrade:
+        // a store that still holds a v1 preset plus the user's own profile gets v2 presets
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), "1");
+        var v1Preset = _sut.GetDefaultPresets().Single(p => p.Id == V1PresetIds[0]);
+        var customProfile = new SandboxProfile { Name = "Custom" };
+        await _sut.SaveAsync(v1Preset);
+        await _sut.SaveAsync(customProfile);
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+        var profiles = (await _sut.GetAllAsync()).ToList();
+
+        // Assert
+        var newPresetIds = _sut.GetDefaultPresets().Select(p => p.Id).Except(V1PresetIds).ToList();
+        profiles.Select(p => p.Id).Should().Contain(newPresetIds);
+        profiles.Should().Contain(p => p.Id == customProfile.Id);
+        profiles.Should().Contain(p => p.Id == v1Preset.Id);
     }
 
     [Fact]
