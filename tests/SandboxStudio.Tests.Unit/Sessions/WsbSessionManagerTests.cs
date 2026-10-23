@@ -570,6 +570,89 @@ public sealed class WsbSessionManagerTests
     }
 
     [Fact]
+    public async Task ShareAsync_PassesHostAndSandboxPaths()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        var id = Guid.NewGuid();
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ShareAsync(id, @"C:\host\folder", @"C:\sandbox\folder", allowWrite: true);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        _invocations.Should().ContainSingle();
+        _invocations[0].StartInfo.ArgumentList.Should().Equal(
+            "--raw", "share", "--id", id.ToString(),
+            "--host-path", @"C:\host\folder", "--sandbox-path", @"C:\sandbox\folder",
+            "--allow-write");
+    }
+
+    [Fact]
+    public async Task ShareAsync_WithoutAllowWrite_OmitsTheFlag()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        var sut = CreateSut();
+
+        // Act
+        await sut.ShareAsync(Guid.NewGuid(), @"C:\host", @"C:\sandbox");
+
+        // Assert
+        _invocations[0].StartInfo.ArgumentList.Should().NotContain("--allow-write");
+    }
+
+    [Fact]
+    public async Task ShareAsync_WhenNotSupported_ReturnsFailureWithoutInvokingCli()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.RequiresNewerWindows);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ShareAsync(Guid.NewGuid(), @"C:\host", @"C:\sandbox");
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        _invocations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ShareAsync_WhenCliFails_ReturnsFailure()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(1, string.Empty, "host path not found");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ShareAsync(Guid.NewGuid(), @"C:\missing", @"C:\sandbox");
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("host path not found");
+    }
+
+    [Theory]
+    [InlineData(null, @"C:\sandbox")]
+    [InlineData("  ", @"C:\sandbox")]
+    [InlineData(@"C:\host", null)]
+    [InlineData(@"C:\host", "  ")]
+    public async Task ShareAsync_WhenPathsAreEmpty_Throws(string? hostPath, string? sandboxPath)
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        var sut = CreateSut();
+
+        // Act
+        var act = () => sut.ShareAsync(Guid.NewGuid(), hostPath!, sandboxPath!);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
     public async Task ConnectAsync_DoesNotCaptureStdout()
     {
         // Arrange - wsb connect returns immediately; capturing stdout would

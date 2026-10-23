@@ -32,6 +32,7 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <FontIcon
                             Grid.Column="0"
@@ -63,6 +64,11 @@
                             Click="OnIpClicked" />
                         <Button
                             Grid.Column="5"
+                            Content="Share…"
+                            IsEnabled="{Binding CanExec}"
+                            Click="OnShareClicked" />
+                        <Button
+                            Grid.Column="6"
                             Content="Stop"
                             IsEnabled="{Binding CanStop}"
                             Click="OnStopClicked" />

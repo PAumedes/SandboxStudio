@@ -33,6 +33,18 @@ public interface ISandboxSessionManager
     /// <summary>Reports the session's IP addresses (<c>wsb ip</c>).</summary>
     Task<WsbIpResult> GetIpAddressAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Shares a host folder into a running session (<c>wsb share</c>), covering what
+    /// <c>.wsb</c> startup mappings cannot. <paramref name="allowWrite"/> grants write
+    /// access to the shared folder inside the sandbox.
+    /// </summary>
+    Task<WsbOperationResult> ShareAsync(
+        Guid id,
+        string hostPath,
+        string sandboxPath,
+        bool allowWrite = false,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Stops a session, releasing its resources and closing its window.</summary>
     Task<WsbOperationResult> StopAsync(Guid id, CancellationToken cancellationToken = default);
 

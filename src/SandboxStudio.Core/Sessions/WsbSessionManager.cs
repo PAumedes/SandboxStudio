@@ -209,6 +209,36 @@ public sealed class WsbSessionManager : ISandboxSessionManager
     }
 
     /// <inheritdoc/>
+    public async Task<WsbOperationResult> ShareAsync(
+        Guid id,
+        string hostPath,
+        string sandboxPath,
+        bool allowWrite = false,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(hostPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sandboxPath);
+        if (!IsSupported)
+        {
+            return WsbOperationResult.Failure("The Windows Sandbox CLI is not available on this host.");
+        }
+
+        var arguments = new List<string>
+        {
+            "share", "--id", id.ToString(), "--host-path", hostPath, "--sandbox-path", sandboxPath
+        };
+        if (allowWrite)
+        {
+            arguments.Add("--allow-write");
+        }
+
+        var invocation = await InvokeAsync(InvocationTimeout, captureOutput: true, cancellationToken, [.. arguments]);
+        return invocation.ExitCode == 0
+            ? WsbOperationResult.Success()
+            : WsbOperationResult.Failure(DescribeFailure("share", invocation));
+    }
+
+    /// <inheritdoc/>
     public async Task<WsbOperationResult> StopAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await RunStateChangingAsync("stop", id, cancellationToken);

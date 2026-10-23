@@ -282,7 +282,7 @@ public sealed partial class MainWindow : Window
     private async void OnSessionsClicked(object sender, RoutedEventArgs e)
     {
         var sessions = App.Host.Services.GetRequiredService<ISandboxSessionManager>();
-        var dialog = new SessionsDialog(sessions)
+        var dialog = new SessionsDialog(sessions, WinRT.Interop.WindowNative.GetWindowHandle(this))
         {
             XamlRoot = Content.XamlRoot
         };

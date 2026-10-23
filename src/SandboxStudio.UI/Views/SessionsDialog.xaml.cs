@@ -13,6 +13,7 @@ namespace SandboxStudio.UI.Views;
 public sealed partial class SessionsDialog : ContentDialog
 {
     private readonly ISandboxSessionManager _sessions;
+    private readonly nint _windowHandle;
     private readonly ObservableCollection<SessionItem> _items = new();
     private readonly CancellationTokenSource _closedCts = new();
     private bool _busy;
@@ -20,9 +21,12 @@ public sealed partial class SessionsDialog : ContentDialog
     /// <summary>
     /// Initializes a new instance of <see cref="SessionsDialog"/>.
     /// </summary>
-    public SessionsDialog(ISandboxSessionManager sessions)
+    /// <param name="sessions">Session manager backing the list and actions.</param>
+    /// <param name="windowHandle">Host window handle for folder pickers.</param>
+    public SessionsDialog(ISandboxSessionManager sessions, nint windowHandle)
     {
         _sessions = sessions ?? throw new ArgumentNullException(nameof(sessions));
+        _windowHandle = windowHandle;
         InitializeComponent();
         SessionsList.ItemsSource = _items;
         Closed += (_, _) => _closedCts.Cancel();
@@ -161,9 +165,7 @@ public sealed partial class SessionsDialog : ContentDialog
                 : WsbRunAs.System;
             var workingDir = string.IsNullOrWhiteSpace(workDirBox.Text) ? null : workDirBox.Text.Trim();
 
-            _busy = true;
-            button.IsEnabled = false;
-            try
+            await RunExclusiveAsync(button, async () =>
             {
                 var result = await _sessions.ExecAsync(
                     item.Session.Id, command, runAs, workingDir, _closedCts.Token);
@@ -177,15 +179,7 @@ public sealed partial class SessionsDialog : ContentDialog
                 {
                     ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? "The command could not be run.");
                 }
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            finally
-            {
-                button.IsEnabled = true;
-                _busy = false;
-            }
+            });
         };
 
         flyout.ShowAt(button);
@@ -198,9 +192,7 @@ public sealed partial class SessionsDialog : ContentDialog
             return;
         }
 
-        _busy = true;
-        button.IsEnabled = false;
-        try
+        await RunExclusiveAsync(button, async () =>
         {
             var result = await _sessions.GetIpAddressAsync(item.Session.Id, _closedCts.Token);
             if (result.ErrorMessage is not null)
@@ -216,15 +208,106 @@ public sealed partial class SessionsDialog : ContentDialog
                     item.Session,
                     result.Addresses.Count == 0 ? "no IP reported" : string.Join(", ", result.Addresses));
             }
-        }
-        catch (OperationCanceledException)
+        });
+    }
+
+    private void OnShareClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: SessionItem item } button || _busy)
         {
+            return;
         }
-        finally
+
+        var hostPathBox = new TextBox
         {
-            button.IsEnabled = true;
-            _busy = false;
-        }
+            Header = "Host folder",
+            PlaceholderText = @"C:\host\folder",
+            MinWidth = 260
+        };
+        var browseButton = new Button { Content = "Browse…", VerticalAlignment = VerticalAlignment.Bottom };
+        var hostRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        hostRow.Children.Add(hostPathBox);
+        hostRow.Children.Add(browseButton);
+        var sandboxPathBox = new TextBox
+        {
+            Header = "Sandbox folder",
+            PlaceholderText = @"C:\sandbox\folder",
+            MinWidth = 320
+        };
+        var allowWriteBox = new CheckBox { Content = "Allow the sandbox to write to this folder" };
+        var shareButton = new Button { Content = "Share", HorizontalAlignment = HorizontalAlignment.Right };
+        var panel = new StackPanel { Spacing = 10 };
+        panel.Children.Add(hostRow);
+        panel.Children.Add(sandboxPathBox);
+        panel.Children.Add(allowWriteBox);
+        panel.Children.Add(shareButton);
+
+        var flyout = new Flyout { Content = panel };
+        browseButton.Click += async (_, _) =>
+        {
+            browseButton.IsEnabled = false;
+            try
+            {
+                var picker = new Windows.Storage.Pickers.FolderPicker
+                {
+                    SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Desktop
+                };
+                picker.FileTypeFilter.Add("*");
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, _windowHandle);
+                var folder = await picker.PickSingleFolderAsync();
+                if (folder is not null)
+                {
+                    hostPathBox.Text = folder.Path;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowStatus(InfoBarSeverity.Error, $"Could not open the folder picker: {ex.Message}");
+            }
+            finally
+            {
+                browseButton.IsEnabled = true;
+                // The modal picker deactivates the app window, which light-dismisses
+                // this flyout; re-show the same instance so typed input is not lost.
+                flyout.ShowAt(button);
+            }
+        };
+        shareButton.Click += async (_, _) =>
+        {
+            if (_busy)
+            {
+                ShowStatus(InfoBarSeverity.Warning, "Another operation is in progress.");
+                return;
+            }
+
+            var hostPath = hostPathBox.Text.Trim();
+            var sandboxPath = sandboxPathBox.Text.Trim();
+            if (hostPath.Length == 0 || sandboxPath.Length == 0)
+            {
+                ShowStatus(InfoBarSeverity.Warning, "Enter both a host folder and a sandbox folder.");
+                return;
+            }
+
+            if (!Directory.Exists(hostPath))
+            {
+                ShowStatus(InfoBarSeverity.Warning, $"Host folder '{hostPath}' does not exist.");
+                return;
+            }
+
+            flyout.Hide();
+            await RunExclusiveAsync(button, async () =>
+            {
+                var result = await _sessions.ShareAsync(
+                    item.Session.Id, hostPath, sandboxPath, allowWriteBox.IsChecked == true, _closedCts.Token);
+                ShowStatus(
+                    result.IsSuccess ? InfoBarSeverity.Success : InfoBarSeverity.Error,
+                    result.IsSuccess
+                        ? $"Shared '{hostPath}' at '{sandboxPath}'."
+                        : result.ErrorMessage ?? "The folder could not be shared.");
+            });
+        };
+
+        flyout.ShowAt(button);
     }
 
     private async void OnConnectClicked(object sender, RoutedEventArgs e)
@@ -234,24 +317,14 @@ public sealed partial class SessionsDialog : ContentDialog
             return;
         }
 
-        _busy = true;
-        button.IsEnabled = false;
-        try
+        await RunExclusiveAsync(button, async () =>
         {
             var result = await _sessions.ConnectAsync(item.Session.Id, _closedCts.Token);
             if (!result.IsSuccess)
             {
                 ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? "Could not connect to the session.");
             }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        finally
-        {
-            button.IsEnabled = true;
-            _busy = false;
-        }
+        });
     }
 
     private async void OnStopClicked(object sender, RoutedEventArgs e)
@@ -261,9 +334,8 @@ public sealed partial class SessionsDialog : ContentDialog
             return;
         }
 
-        _busy = true;
-        button.IsEnabled = false;
-        try
+        var stopped = false;
+        await RunExclusiveAsync(button, async () =>
         {
             var result = await _sessions.StopAsync(item.Session.Id, _closedCts.Token);
             if (!result.IsSuccess)
@@ -271,18 +343,36 @@ public sealed partial class SessionsDialog : ContentDialog
                 ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? "Could not stop the session.");
                 return;
             }
+
+            stopped = true;
+        });
+
+        if (stopped)
+        {
+            await RefreshAsync();
+        }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="action"/> holding the <see cref="_busy"/> mutual-exclusion
+    /// flag and disabling <paramref name="button"/> until it completes.
+    /// </summary>
+    private async Task RunExclusiveAsync(Button button, Func<Task> action)
+    {
+        _busy = true;
+        button.IsEnabled = false;
+        try
+        {
+            await action();
         }
         catch (OperationCanceledException)
         {
-            return;
         }
         finally
         {
             button.IsEnabled = true;
             _busy = false;
         }
-
-        await RefreshAsync();
     }
 
     private void ShowStatus(InfoBarSeverity severity, string message)
