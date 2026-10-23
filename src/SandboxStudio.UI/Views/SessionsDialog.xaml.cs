@@ -64,7 +64,7 @@ public sealed partial class SessionsDialog : ContentDialog
             var result = await _sessions.ListAsync(_closedCts.Token);
             if (result.ErrorMessage is not null)
             {
-                ShowStatus(InfoBarSeverity.Error, result.ErrorMessage);
+                ShowStatus(InfoBarSeverity.Error, Localizer.Core(result.ErrorKey, result.ErrorArgs, result.ErrorMessage));
                 return;
             }
 
@@ -177,7 +177,7 @@ public sealed partial class SessionsDialog : ContentDialog
                 }
                 else
                 {
-                    ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? Localizer.Get("ExecFailedMessage"));
+                    ShowStatus(InfoBarSeverity.Error, Localizer.Core(result.ErrorKey, result.ErrorArgs, result.ErrorMessage ?? Localizer.Get("ExecFailedMessage")));
                 }
             });
         };
@@ -197,7 +197,7 @@ public sealed partial class SessionsDialog : ContentDialog
             var result = await _sessions.GetIpAddressAsync(item.Session.Id, _closedCts.Token);
             if (result.ErrorMessage is not null)
             {
-                ShowStatus(InfoBarSeverity.Error, result.ErrorMessage);
+                ShowStatus(InfoBarSeverity.Error, Localizer.Core(result.ErrorKey, result.ErrorArgs, result.ErrorMessage));
                 return;
             }
 
@@ -303,7 +303,7 @@ public sealed partial class SessionsDialog : ContentDialog
                     result.IsSuccess ? InfoBarSeverity.Success : InfoBarSeverity.Error,
                     result.IsSuccess
                         ? Localizer.Format("ShareSuccess", hostPath, sandboxPath)
-                        : result.ErrorMessage ?? Localizer.Get("ShareFailed"));
+                        : Localizer.Core(result.ErrorKey, result.ErrorArgs, result.ErrorMessage ?? Localizer.Get("ShareFailed")));
             });
         };
 
@@ -322,7 +322,7 @@ public sealed partial class SessionsDialog : ContentDialog
             var result = await _sessions.ConnectAsync(item.Session.Id, _closedCts.Token);
             if (!result.IsSuccess)
             {
-                ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? Localizer.Get("SessionConnectFailed"));
+                ShowStatus(InfoBarSeverity.Error, Localizer.Core(result.ErrorKey, result.ErrorArgs, result.ErrorMessage ?? Localizer.Get("SessionConnectFailed")));
             }
         });
     }
@@ -340,7 +340,7 @@ public sealed partial class SessionsDialog : ContentDialog
             var result = await _sessions.StopAsync(item.Session.Id, _closedCts.Token);
             if (!result.IsSuccess)
             {
-                ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? Localizer.Get("SessionStopFailed"));
+                ShowStatus(InfoBarSeverity.Error, Localizer.Core(result.ErrorKey, result.ErrorArgs, result.ErrorMessage ?? Localizer.Get("SessionStopFailed")));
                 return;
             }
 

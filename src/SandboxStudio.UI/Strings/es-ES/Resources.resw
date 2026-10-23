@@ -237,4 +237,34 @@
   <data name="SessionStateRunning" xml:space="preserve"><value>En ejecución</value></data>
   <data name="SessionStateStopped" xml:space="preserve"><value>Detenida</value></data>
   <data name="SessionStateUnknown" xml:space="preserve"><value>Estado desconocido</value></data>
+  <data name="CoreReasonRequiresBuild" xml:space="preserve"><value>Requiere la compilación {0} de Windows o posterior (compilación del host: {1}).</value></data>
+  <data name="CoreReasonDisabledByPolicy" xml:space="preserve"><value>Deshabilitado por la directiva de host '{0}'.</value></data>
+  <data name="CorePolicyMappedFoldersDisabled" xml:space="preserve"><value>MappedFolders no tiene efecto porque la directiva de host '{0}' lo deshabilita.</value></data>
+  <data name="CorePolicyWritableFoldersDisabled" xml:space="preserve"><value>Las carpetas asignadas con escritura no tienen efecto porque la directiva de host '{0}' deshabilita el acceso de escritura.</value></data>
+  <data name="CorePolicyDefaultConflict" xml:space="preserve"><value>{0} no está configurado y su valor predeterminado es habilitado, pero la directiva de host '{1}' lo deshabilita.</value></data>
+  <data name="CorePolicySettingConflict" xml:space="preserve"><value>{0} está configurado como '{1}' pero la directiva de host '{2}' lo deshabilita.</value></data>
+  <data name="CoreMemoryBelowMinimum" xml:space="preserve"><value>La asignación de memoria de {0} MB está por debajo del mínimo absoluto requerido ({1} MB).</value></data>
+  <data name="CoreMemoryBelowRecommended" xml:space="preserve"><value>La asignación de memoria de {0} MB está por debajo del mínimo recomendado de {1} MB; el rendimiento puede degradarse gravemente.</value></data>
+  <data name="CoreValueEmpty" xml:space="preserve"><value>{0} no puede estar vacío ni contener solo espacios.</value></data>
+  <data name="CoreInvalidTriState" xml:space="preserve"><value>Valor '{0}' no válido para {1}. Los valores permitidos son 'Enable', 'Disable' o 'Default'.</value></data>
+  <data name="CoreHostFolderEmpty" xml:space="preserve"><value>La ruta de HostFolder no puede estar vacía.</value></data>
+  <data name="CorePathInvalidChars" xml:space="preserve"><value>La ruta '{1}' de {0} contiene caracteres no válidos.</value></data>
+  <data name="CorePathNotQualified" xml:space="preserve"><value>La ruta '{1}' de {0} debe ser una ruta absoluta completa.</value></data>
+  <data name="CoreHostFolderDuplicate" xml:space="preserve"><value>Se detectó una asignación de HostFolder duplicada: '{0}'.</value></data>
+  <data name="CoreHostFolderMissing" xml:space="preserve"><value>El directorio '{0}' de HostFolder no existe en el host. Windows Sandbox no se iniciará a menos que se cree.</value></data>
+  <data name="CoreSandboxFolderDuplicate" xml:space="preserve"><value>Se detectó un destino de SandboxFolder duplicado: '{0}'.</value></data>
+  <data name="CoreReadOnlyInvalid" xml:space="preserve"><value>El valor de ReadOnly debe ser 'true' o 'false'; se encontró '{0}'.</value></data>
+  <data name="CoreLogonTooLong" xml:space="preserve"><value>La longitud del comando de inicio de sesión ({0}) supera el límite máximo de Windows de {1} caracteres.</value></data>
+  <data name="CoreCliUnavailable" xml:space="preserve"><value>La CLI de Windows Sandbox no está disponible en este host.</value></data>
+  <data name="CoreCliConfigTooLarge" xml:space="preserve"><value>La configuración es demasiado grande para una línea de comandos de wsb start.</value></data>
+  <data name="CoreCliNoSandboxId" xml:space="preserve"><value>La CLI de Windows Sandbox no informó un identificador de espacio aislado.</value></data>
+  <data name="CoreCliNoExitCode" xml:space="preserve"><value>La CLI de Windows Sandbox no informó un código de salida.</value></data>
+  <data name="CoreCliUnparsable" xml:space="preserve"><value>La CLI de Windows Sandbox devolvió una salida que no se pudo analizar.</value></data>
+  <data name="CoreCliExitFailure" xml:space="preserve"><value>wsb {0} falló con el código de salida {1}.</value></data>
+  <data name="CoreCliStdErrFailure" xml:space="preserve"><value>wsb {0} falló: {1}</value></data>
+  <data name="CoreCliTimeout" xml:space="preserve"><value>wsb {0} no terminó en {1} segundos; la operación podría haberse completado de todos modos.</value></data>
+  <data name="CoreLauncherValidationFailed" xml:space="preserve"><value>Error de validación: {0} - {1}</value></data>
+  <data name="CoreLauncherFailed" xml:space="preserve"><value>No se pudo iniciar Windows Sandbox.</value></data>
+  <data name="CoreLauncherException" xml:space="preserve"><value>No se pudo iniciar Windows Sandbox: {0}</value></data>
+  <data name="CoreLauncherNotInstalled" xml:space="preserve"><value>Windows Sandbox no está instalado ni habilitado en este host.</value></data>
 </root>

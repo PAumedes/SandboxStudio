@@ -2,6 +2,7 @@ using System.Diagnostics;
 using FluentAssertions;
 using Moq;
 using SandboxStudio.Core.Capabilities;
+using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Sessions;
 using Xunit;
 
@@ -669,5 +670,148 @@ public sealed class WsbSessionManagerTests
         _invocations.Should().ContainSingle();
         _invocations[0].StartInfo.ArgumentList.Should().Equal("--raw", "connect", "--id", id.ToString());
         _invocations[0].CaptureOutput.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ListAsync_WhenNotSupported_EmitsCliUnavailableKey()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.RequiresNewerWindows);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.ErrorKey.Should().Be(MessageKeys.CliUnavailable);
+        result.ErrorMessage.Should().NotBeNullOrEmpty("the English fallback remains populated");
+    }
+
+    [Fact]
+    public async Task ListAsync_WhenCliFailsWithStderr_EmitsStdErrFailureKeyAndArgs()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(5, string.Empty, "access denied");
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.ErrorKey.Should().Be(MessageKeys.CliStdErrFailure);
+        result.ErrorArgs.Should().BeEquivalentTo(["list", "access denied"]);
+        result.ErrorMessage.Should().Contain("access denied");
+    }
+
+    [Fact]
+    public async Task ListAsync_WhenCliFailsWithoutStderr_EmitsExitFailureKeyAndArgs()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(5, string.Empty, string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.ErrorKey.Should().Be(MessageKeys.CliExitFailure);
+        result.ErrorArgs.Should().BeEquivalentTo(new object?[] { "list", 5 });
+    }
+
+    [Fact]
+    public async Task ListAsync_WhenOutputUnparsable_EmitsUnparsableKey()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(0, "not json at all", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        result.ErrorKey.Should().Be(MessageKeys.CliUnparsable);
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenConfigTooLarge_EmitsKeyAndCliNeverStarted()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        var sut = CreateSut();
+        var xml = new string('x', WsbSessionManager.MaxInlineConfigChars + 1);
+
+        // Act
+        var result = await sut.StartAsync(xml);
+
+        // Assert
+        result.CliNeverStarted.Should().BeTrue();
+        result.ErrorKey.Should().Be(MessageKeys.CliConfigTooLarge);
+        _invocations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenNotSupported_EmitsCliUnavailableKeyAndCliNeverStarted()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.RequiresNewerWindows);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StartAsync("<Configuration/>");
+
+        // Assert
+        result.CliNeverStarted.Should().BeTrue("wsb.exe never ran, so a file-path fallback is safe");
+        result.ErrorKey.Should().Be(MessageKeys.CliUnavailable);
+    }
+
+    [Fact]
+    public async Task StopAsync_WhenInvocationTimesOut_EmitsTimeoutKeyAndArgs()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(-1, string.Empty, string.Empty, TimedOut: true);
+        var sut = CreateSut();
+        var id = Guid.NewGuid();
+
+        // Act
+        var result = await sut.StopAsync(id);
+
+        // Assert
+        result.ErrorKey.Should().Be(MessageKeys.CliTimeout);
+        result.ErrorArgs.Should().BeEquivalentTo(new object?[] { "stop", 30 });
+        result.ErrorMessage.Should().Contain("did not finish");
+    }
+
+    [Fact]
+    public async Task StartAsync_WhenCliOmitsSessionId_EmitsNoSandboxIdKey()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(0, "{}", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.StartAsync("<Configuration/>");
+
+        // Assert
+        result.ErrorKey.Should().Be(MessageKeys.CliNoSandboxId);
+    }
+
+    [Fact]
+    public async Task ExecAsync_WhenCliOmitsExitCode_EmitsNoExitCodeKey()
+    {
+        // Arrange
+        ArrangeAvailability(FeatureStatus.Available);
+        _nextResult = new(0, "{}", string.Empty);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ExecAsync(Guid.NewGuid(), "whoami", WsbRunAs.System);
+
+        // Assert
+        result.ErrorKey.Should().Be(MessageKeys.CliNoExitCode);
     }
 }

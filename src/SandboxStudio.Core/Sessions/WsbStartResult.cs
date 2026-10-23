@@ -10,12 +10,14 @@ namespace SandboxStudio.Core.Sessions;
 /// Whether the CLI provably never ran, making a fallback launch path safe.
 /// <see langword="false"/> means a session may already exist — callers must not retry.
 /// </param>
-public sealed record WsbStartResult(bool IsSuccess, Guid? SessionId, string? ErrorMessage, bool CliNeverStarted = false)
+/// <param name="ErrorKey">Optional <see cref="Localization.MessageKeys"/> entry for localized display.</param>
+/// <param name="ErrorArgs">Optional format arguments paired with <paramref name="ErrorKey"/>.</param>
+public sealed record WsbStartResult(bool IsSuccess, Guid? SessionId, string? ErrorMessage, bool CliNeverStarted = false, string? ErrorKey = null, IReadOnlyList<object?>? ErrorArgs = null)
 {
     /// <summary>Factory for a successful result.</summary>
     public static WsbStartResult Success(Guid sessionId) => new(true, sessionId, null);
 
     /// <summary>Factory for a failed result.</summary>
-    public static WsbStartResult Failure(string errorMessage, bool cliNeverStarted = false) =>
-        new(false, null, errorMessage, cliNeverStarted);
+    public static WsbStartResult Failure(string errorMessage, bool cliNeverStarted = false, string? errorKey = null, IReadOnlyList<object?>? errorArgs = null) =>
+        new(false, null, errorMessage, cliNeverStarted, errorKey, errorArgs);
 }

@@ -205,7 +205,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
         else
         {
-            StatusMessage = Localizer.Format("StatusLaunchFailed", result.ErrorMessage);
+            StatusMessage = Localizer.Format("StatusLaunchFailed", Localizer.Core(result.ErrorKey, result.ErrorArgs, result.ErrorMessage ?? Localizer.Get("CoreLauncherFailed")));
         }
     }
 

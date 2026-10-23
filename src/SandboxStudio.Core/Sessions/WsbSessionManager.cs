@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using SandboxStudio.Core.Capabilities;
+using SandboxStudio.Core.Localization;
 
 namespace SandboxStudio.Core.Sessions;
 
@@ -64,13 +65,14 @@ public sealed class WsbSessionManager : ISandboxSessionManager
     {
         if (!IsSupported)
         {
-            return WsbListResult.Failure("The Windows Sandbox CLI is not available on this host.");
+            return WsbListResult.Failure("The Windows Sandbox CLI is not available on this host.", MessageKeys.CliUnavailable);
         }
 
         var invocation = await InvokeAsync(InvocationTimeout, captureOutput: true, cancellationToken, "list");
         if (invocation.ExitCode != 0)
         {
-            return WsbListResult.Failure(DescribeFailure("list", invocation));
+            var failure = DescribeFailure("list", invocation, InvocationTimeout);
+            return WsbListResult.Failure(failure.Message, failure.Key, failure.Args);
         }
 
         try
@@ -94,7 +96,7 @@ public sealed class WsbSessionManager : ISandboxSessionManager
         }
         catch (JsonException)
         {
-            return WsbListResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.");
+            return WsbListResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.", MessageKeys.CliUnparsable);
         }
     }
 
@@ -104,22 +106,29 @@ public sealed class WsbSessionManager : ISandboxSessionManager
         ArgumentException.ThrowIfNullOrWhiteSpace(configurationXml);
         if (!IsSupported)
         {
-            return WsbStartResult.Failure("The Windows Sandbox CLI is not available on this host.");
+            return WsbStartResult.Failure(
+                "The Windows Sandbox CLI is not available on this host.",
+                cliNeverStarted: true,
+                errorKey: MessageKeys.CliUnavailable);
         }
 
         if (configurationXml.Length > MaxInlineConfigChars)
         {
             return WsbStartResult.Failure(
                 "The configuration is too large for a wsb start command line.",
-                cliNeverStarted: true);
+                cliNeverStarted: true,
+                errorKey: MessageKeys.CliConfigTooLarge);
         }
 
         var invocation = await InvokeAsync(StartTimeout, captureOutput: true, cancellationToken, "start", "--config", configurationXml);
         if (invocation.ExitCode != 0)
         {
+            var failure = DescribeFailure("start", invocation, StartTimeout);
             return WsbStartResult.Failure(
-                DescribeFailure("start", invocation),
-                cliNeverStarted: !invocation.Spawned);
+                failure.Message,
+                cliNeverStarted: !invocation.Spawned,
+                errorKey: failure.Key,
+                errorArgs: failure.Args);
         }
 
         try
@@ -127,11 +136,11 @@ public sealed class WsbSessionManager : ISandboxSessionManager
             var response = JsonSerializer.Deserialize<StartResponseDto>(invocation.StdOut, JsonOptions);
             return response?.Id is { } id && id != Guid.Empty
                 ? WsbStartResult.Success(id)
-                : WsbStartResult.Failure("The Windows Sandbox CLI did not report a sandbox ID.");
+                : WsbStartResult.Failure("The Windows Sandbox CLI did not report a sandbox ID.", errorKey: MessageKeys.CliNoSandboxId);
         }
         catch (JsonException)
         {
-            return WsbStartResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.");
+            return WsbStartResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.", errorKey: MessageKeys.CliUnparsable);
         }
     }
 
@@ -146,7 +155,7 @@ public sealed class WsbSessionManager : ISandboxSessionManager
         ArgumentException.ThrowIfNullOrWhiteSpace(command);
         if (!IsSupported)
         {
-            return WsbExecResult.Failure("The Windows Sandbox CLI is not available on this host.");
+            return WsbExecResult.Failure("The Windows Sandbox CLI is not available on this host.", MessageKeys.CliUnavailable);
         }
 
         var arguments = new List<string>
@@ -161,7 +170,8 @@ public sealed class WsbSessionManager : ISandboxSessionManager
         var invocation = await InvokeAsync(InvocationTimeout, captureOutput: true, cancellationToken, [.. arguments]);
         if (invocation.ExitCode != 0)
         {
-            return WsbExecResult.Failure(DescribeFailure("exec", invocation));
+            var failure = DescribeFailure("exec", invocation, InvocationTimeout);
+            return WsbExecResult.Failure(failure.Message, failure.Key, failure.Args);
         }
 
         try
@@ -169,11 +179,11 @@ public sealed class WsbSessionManager : ISandboxSessionManager
             var response = JsonSerializer.Deserialize<ExecResponseDto>(invocation.StdOut, JsonOptions);
             return response?.ExitCode is { } exitCode
                 ? WsbExecResult.Ran(exitCode)
-                : WsbExecResult.Failure("The Windows Sandbox CLI did not report an exit code.");
+                : WsbExecResult.Failure("The Windows Sandbox CLI did not report an exit code.", MessageKeys.CliNoExitCode);
         }
         catch (JsonException)
         {
-            return WsbExecResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.");
+            return WsbExecResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.", MessageKeys.CliUnparsable);
         }
     }
 
@@ -182,13 +192,14 @@ public sealed class WsbSessionManager : ISandboxSessionManager
     {
         if (!IsSupported)
         {
-            return WsbIpResult.Failure("The Windows Sandbox CLI is not available on this host.");
+            return WsbIpResult.Failure("The Windows Sandbox CLI is not available on this host.", MessageKeys.CliUnavailable);
         }
 
         var invocation = await InvokeAsync(InvocationTimeout, captureOutput: true, cancellationToken, "ip", "--id", id.ToString());
         if (invocation.ExitCode != 0)
         {
-            return WsbIpResult.Failure(DescribeFailure("ip", invocation));
+            var failure = DescribeFailure("ip", invocation, InvocationTimeout);
+            return WsbIpResult.Failure(failure.Message, failure.Key, failure.Args);
         }
 
         try
@@ -204,7 +215,7 @@ public sealed class WsbSessionManager : ISandboxSessionManager
         }
         catch (JsonException)
         {
-            return WsbIpResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.");
+            return WsbIpResult.Failure("The Windows Sandbox CLI returned output that could not be parsed.", MessageKeys.CliUnparsable);
         }
     }
 
@@ -220,7 +231,7 @@ public sealed class WsbSessionManager : ISandboxSessionManager
         ArgumentException.ThrowIfNullOrWhiteSpace(sandboxPath);
         if (!IsSupported)
         {
-            return WsbOperationResult.Failure("The Windows Sandbox CLI is not available on this host.");
+            return WsbOperationResult.Failure("The Windows Sandbox CLI is not available on this host.", MessageKeys.CliUnavailable);
         }
 
         var arguments = new List<string>
@@ -233,9 +244,13 @@ public sealed class WsbSessionManager : ISandboxSessionManager
         }
 
         var invocation = await InvokeAsync(InvocationTimeout, captureOutput: true, cancellationToken, [.. arguments]);
-        return invocation.ExitCode == 0
-            ? WsbOperationResult.Success()
-            : WsbOperationResult.Failure(DescribeFailure("share", invocation));
+        if (invocation.ExitCode == 0)
+        {
+            return WsbOperationResult.Success();
+        }
+
+        var shareFailure = DescribeFailure("share", invocation, InvocationTimeout);
+        return WsbOperationResult.Failure(shareFailure.Message, shareFailure.Key, shareFailure.Args);
     }
 
     /// <inheritdoc/>
@@ -260,13 +275,17 @@ public sealed class WsbSessionManager : ISandboxSessionManager
     {
         if (!IsSupported)
         {
-            return WsbOperationResult.Failure("The Windows Sandbox CLI is not available on this host.");
+            return WsbOperationResult.Failure("The Windows Sandbox CLI is not available on this host.", MessageKeys.CliUnavailable);
         }
 
         var invocation = await InvokeAsync(InvocationTimeout, captureOutput, cancellationToken, verb, "--id", id.ToString());
-        return invocation.ExitCode == 0
-            ? WsbOperationResult.Success()
-            : WsbOperationResult.Failure(DescribeFailure(verb, invocation));
+        if (invocation.ExitCode == 0)
+        {
+            return WsbOperationResult.Success();
+        }
+
+        var failure = DescribeFailure(verb, invocation, InvocationTimeout);
+        return WsbOperationResult.Failure(failure.Message, failure.Key, failure.Args);
     }
 
     private async Task<WsbInvocationResult> InvokeAsync(
@@ -349,7 +368,8 @@ public sealed class WsbSessionManager : ISandboxSessionManager
                 return new WsbInvocationResult(
                     -1,
                     Drained(stdout),
-                    Drained(stderr) + "The Windows Sandbox CLI did not respond in time; a session may have been started — check Sessions.");
+                    Drained(stderr),
+                    TimedOut: true);
             }
         }
 
@@ -394,10 +414,16 @@ public sealed class WsbSessionManager : ISandboxSessionManager
         }
     }
 
-    private static string DescribeFailure(string verb, WsbInvocationResult invocation) =>
-        string.IsNullOrWhiteSpace(invocation.StdErr)
-            ? $"wsb {verb} failed with exit code {invocation.ExitCode}."
-            : $"wsb {verb} failed: {invocation.StdErr.Trim()}";
+    private static (string Message, string Key, object?[] Args) DescribeFailure(
+        string verb, WsbInvocationResult invocation, TimeSpan timeout) =>
+        invocation.TimedOut
+            ? ($"wsb {verb} did not finish within {(int)timeout.TotalSeconds} seconds; the operation may still have completed." +
+               (string.IsNullOrWhiteSpace(invocation.StdErr) ? string.Empty : $" stderr: {invocation.StdErr.Trim()}"),
+               MessageKeys.CliTimeout,
+               [verb, (int)timeout.TotalSeconds])
+            : string.IsNullOrWhiteSpace(invocation.StdErr)
+                ? ($"wsb {verb} failed with exit code {invocation.ExitCode}.", MessageKeys.CliExitFailure, [verb, invocation.ExitCode])
+                : ($"wsb {verb} failed: {invocation.StdErr.Trim()}", MessageKeys.CliStdErrFailure, [verb, invocation.StdErr.Trim()]);
 
     private static SandboxSessionState MapState(string? status) =>
         status switch

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Validation;
 using Xunit;
@@ -351,5 +352,44 @@ public sealed class WsbValidatorTests
         // Assert
         result.IsValid.Should().BeFalse();
         result.Messages.Should().Contain(m => m.Severity == ValidationSeverity.Error && m.Message.Contains("cannot be empty or whitespace"));
+    }
+
+    [Fact]
+    public void Validate_WhenMemoryBelowMinimum_EmitsMessageKeyAndArgs()
+    {
+        // Arrange
+        var config = new WsbConfiguration { MemoryInMB = 128 };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        var message = result.Messages.Should().ContainSingle(m => m.PropertyName == nameof(WsbConfiguration.MemoryInMB)).Subject;
+        message.MessageKey.Should().Be(MessageKeys.MemoryBelowMinimum);
+        message.MessageArgs.Should().BeEquivalentTo([128, 256]);
+        message.Message.Should().Contain("128").And.Contain("256", "the English fallback remains populated");
+    }
+
+    [Fact]
+    public void Validate_WhenHostFolderMissing_EmitsWarningKeyAndPathArg()
+    {
+        // Arrange
+        var missing = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var config = new WsbConfiguration
+        {
+            MappedFolders =
+            [
+                new WsbMappedFolder { HostFolder = missing, SandboxFolder = "C:\\Share" }
+            ]
+        };
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        var message = result.Messages.Should().ContainSingle(m => m.PropertyName.EndsWith(".HostFolder")).Subject;
+        message.Severity.Should().Be(ValidationSeverity.Warning);
+        message.MessageKey.Should().Be(MessageKeys.HostFolderMissing);
+        message.MessageArgs.Should().BeEquivalentTo([missing]);
     }
 }

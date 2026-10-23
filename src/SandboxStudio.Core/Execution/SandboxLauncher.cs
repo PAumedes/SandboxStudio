@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using SandboxStudio.Core.Capabilities;
+using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Sessions;
@@ -60,7 +61,17 @@ public sealed class SandboxLauncher : ISandboxLauncher
         if (!validationResult.IsValid)
         {
             var firstError = validationResult.Messages.First(m => m.Severity == ValidationSeverity.Error);
-            return SandboxLaunchResult.Failure($"Validation failed: {firstError.PropertyName} - {firstError.Message}");
+            // When the validator emitted a structured key, propagate it so the host
+            // localizes the inner message rather than wrapping English text.
+            return firstError.MessageKey is not null
+                ? SandboxLaunchResult.Failure(
+                    $"Validation failed: {firstError.PropertyName} - {firstError.Message}",
+                    firstError.MessageKey,
+                    firstError.MessageArgs)
+                : SandboxLaunchResult.Failure(
+                    $"Validation failed: {firstError.PropertyName} - {firstError.Message}",
+                    MessageKeys.LauncherValidationFailed,
+                    [firstError.PropertyName, firstError.Message]);
         }
 
         if (_sessionManager?.IsSupported == true)
@@ -80,18 +91,21 @@ public sealed class SandboxLauncher : ISandboxLauncher
                 {
                     // The CLI ran and failed — a session may already exist; do not
                     // risk a second launch through the file path.
-                    return SandboxLaunchResult.Failure(start.ErrorMessage ?? "Failed to launch Windows Sandbox.");
+                    return SandboxLaunchResult.Failure(
+                        start.ErrorMessage ?? "Failed to launch Windows Sandbox.",
+                        start.ErrorKey ?? MessageKeys.LauncherFailed,
+                        start.ErrorArgs);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                return SandboxLaunchResult.Failure($"Failed to launch Windows Sandbox: {ex.Message}");
+                return SandboxLaunchResult.Failure($"Failed to launch Windows Sandbox: {ex.Message}", MessageKeys.LauncherException, [ex.Message]);
             }
         }
 
         if (!IsSandboxAvailable())
         {
-            return SandboxLaunchResult.Failure("Windows Sandbox is not installed or enabled on this host.");
+            return SandboxLaunchResult.Failure("Windows Sandbox is not installed or enabled on this host.", MessageKeys.LauncherNotInstalled);
         }
 
         var runId = Guid.NewGuid();
@@ -125,7 +139,7 @@ public sealed class SandboxLauncher : ISandboxLauncher
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return SandboxLaunchResult.Failure($"Failed to launch Windows Sandbox: {ex.Message}");
+            return SandboxLaunchResult.Failure($"Failed to launch Windows Sandbox: {ex.Message}", MessageKeys.LauncherException, [ex.Message]);
         }
     }
 

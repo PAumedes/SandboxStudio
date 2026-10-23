@@ -1,6 +1,8 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using FluentAssertions;
+using SandboxStudio.Core.Localization;
 using Xunit;
 
 namespace SandboxStudio.Tests.Unit.Localization;
@@ -153,6 +155,24 @@ public sealed class ReswParityTests
             .ToList();
 
         mismatched.Should().BeEmpty("format placeholders must line up or string.Format throws at runtime");
+    }
+
+    [Fact]
+    public void EveryCoreMessageKey_ExistsPerLanguage()
+    {
+        var keyValues = typeof(MessageKeys)
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(field => field.IsLiteral)
+            .Select(field => (string)field.GetRawConstantValue()!)
+            .ToList();
+
+        keyValues.Should().NotBeEmpty();
+        foreach (var language in new[] { "en-US", "es-ES" })
+        {
+            var keys = Entries(LoadResw(language)).Keys;
+            var missing = keyValues.Except(keys).ToList();
+            missing.Should().BeEmpty($"every MessageKeys constant must resolve to a resource in {language}");
+        }
     }
 
     [Fact]

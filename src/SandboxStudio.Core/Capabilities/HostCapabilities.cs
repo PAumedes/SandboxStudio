@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Security;
 using Microsoft.Win32;
+using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Models;
 
 namespace SandboxStudio.Core.Capabilities;
@@ -115,7 +117,10 @@ public sealed class HostCapabilities : IHostCapabilities
             return new FeatureAvailability(
                 FeatureStatus.RequiresNewerWindows,
                 $"Requires Windows build {requiredBuild} or later (host build: {OsBuild}).",
-                requiredBuild);
+                requiredBuild,
+                MessageKeys.ReasonRequiresBuild,
+                // Build numbers are identifiers, not quantities — keep them ungrouped.
+                [requiredBuild.ToString(CultureInfo.InvariantCulture), OsBuild.ToString(CultureInfo.InvariantCulture)]);
         }
 
         if (rule.PolicyValueName is { } policyValueName &&
@@ -124,7 +129,9 @@ public sealed class HostCapabilities : IHostCapabilities
         {
             return new FeatureAvailability(
                 FeatureStatus.DisabledByPolicy,
-                $"Disabled by host policy '{policyValueName}'.");
+                $"Disabled by host policy '{policyValueName}'.",
+                ReasonKey: MessageKeys.ReasonDisabledByPolicy,
+                ReasonArgs: [policyValueName]);
         }
 
         return new FeatureAvailability(FeatureStatus.Available);
@@ -149,14 +156,16 @@ public sealed class HostCapabilities : IHostCapabilities
             AddIfBlocked(
                 SandboxFeature.MappedFolders,
                 nameof(configuration.MappedFolders),
-                policy => $"{nameof(configuration.MappedFolders)} has no effect because host policy '{policy}' disables it.");
+                MessageKeys.PolicyMappedFoldersDisabled,
+                policy => ($"{nameof(configuration.MappedFolders)} has no effect because host policy '{policy}' disables it.", [policy]));
 
             if (configuration.MappedFolders.Any(folder => !folder.IsReadOnly))
             {
                 AddIfBlocked(
                     SandboxFeature.WritableMappedFolders,
                     nameof(configuration.MappedFolders),
-                    policy => $"Writable mapped folders have no effect because host policy '{policy}' disables write access.");
+                    MessageKeys.PolicyWritableFoldersDisabled,
+                    policy => ($"Writable mapped folders have no effect because host policy '{policy}' disables write access.", [policy]));
             }
         }
 
@@ -173,12 +182,16 @@ public sealed class HostCapabilities : IHostCapabilities
                 return;
             }
 
-            AddIfBlocked(feature, settingName, policy => configured is null
-                ? $"{settingName} is not set and defaults to enabled, but host policy '{policy}' disables it."
-                : $"{settingName} is set to '{configured}' but host policy '{policy}' disables it.");
+            AddIfBlocked(
+                feature,
+                settingName,
+                configured is null ? MessageKeys.PolicyDefaultConflict : MessageKeys.PolicySettingConflict,
+                policy => configured is null
+                    ? ($"{settingName} is not set and defaults to enabled, but host policy '{policy}' disables it.", [settingName, policy])
+                    : ($"{settingName} is set to '{configured}' but host policy '{policy}' disables it.", [settingName, configured, policy]));
         }
 
-        void AddIfBlocked(SandboxFeature feature, string settingName, Func<string, string> detail)
+        void AddIfBlocked(SandboxFeature feature, string settingName, string messageKey, Func<string, (string Message, object?[] Args)> detail)
         {
             if (GetAvailability(feature).Status != FeatureStatus.DisabledByPolicy)
             {
@@ -186,7 +199,8 @@ public sealed class HostCapabilities : IHostCapabilities
             }
 
             var policyName = Rules[feature].PolicyValueName!;
-            overrides.Add(new PolicyOverride(settingName, policyName, detail(policyName)));
+            var (message, args) = detail(policyName);
+            overrides.Add(new PolicyOverride(settingName, policyName, message, messageKey, args));
         }
     }
 

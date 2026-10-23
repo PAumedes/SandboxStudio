@@ -237,4 +237,34 @@
   <data name="SessionStateRunning" xml:space="preserve"><value>Running</value></data>
   <data name="SessionStateStopped" xml:space="preserve"><value>Stopped</value></data>
   <data name="SessionStateUnknown" xml:space="preserve"><value>State not reported</value></data>
+  <data name="CoreReasonRequiresBuild" xml:space="preserve"><value>Requires Windows build {0} or later (host build: {1}).</value></data>
+  <data name="CoreReasonDisabledByPolicy" xml:space="preserve"><value>Disabled by host policy '{0}'.</value></data>
+  <data name="CorePolicyMappedFoldersDisabled" xml:space="preserve"><value>MappedFolders has no effect because host policy '{0}' disables it.</value></data>
+  <data name="CorePolicyWritableFoldersDisabled" xml:space="preserve"><value>Writable mapped folders have no effect because host policy '{0}' disables write access.</value></data>
+  <data name="CorePolicyDefaultConflict" xml:space="preserve"><value>{0} is not set and defaults to enabled, but host policy '{1}' disables it.</value></data>
+  <data name="CorePolicySettingConflict" xml:space="preserve"><value>{0} is set to '{1}' but host policy '{2}' disables it.</value></data>
+  <data name="CoreMemoryBelowMinimum" xml:space="preserve"><value>Memory allocation of {0} MB is below the absolute minimum required ({1} MB).</value></data>
+  <data name="CoreMemoryBelowRecommended" xml:space="preserve"><value>Memory allocation of {0} MB is below the recommended minimum of {1} MB; performance may be severely degraded.</value></data>
+  <data name="CoreValueEmpty" xml:space="preserve"><value>{0} cannot be empty or whitespace.</value></data>
+  <data name="CoreInvalidTriState" xml:space="preserve"><value>Invalid value '{0}' for {1}. Allowed values are 'Enable', 'Disable', or 'Default'.</value></data>
+  <data name="CoreHostFolderEmpty" xml:space="preserve"><value>HostFolder path cannot be empty.</value></data>
+  <data name="CorePathInvalidChars" xml:space="preserve"><value>{0} path '{1}' contains invalid path characters.</value></data>
+  <data name="CorePathNotQualified" xml:space="preserve"><value>{0} path '{1}' must be a fully qualified absolute path.</value></data>
+  <data name="CoreHostFolderDuplicate" xml:space="preserve"><value>Duplicate HostFolder mapping detected: '{0}'.</value></data>
+  <data name="CoreHostFolderMissing" xml:space="preserve"><value>HostFolder directory '{0}' does not exist on the host. Windows Sandbox will fail to start unless created.</value></data>
+  <data name="CoreSandboxFolderDuplicate" xml:space="preserve"><value>Duplicate SandboxFolder destination detected: '{0}'.</value></data>
+  <data name="CoreReadOnlyInvalid" xml:space="preserve"><value>ReadOnly value must be 'true' or 'false', found '{0}'.</value></data>
+  <data name="CoreLogonTooLong" xml:space="preserve"><value>Logon command length ({0}) exceeds the Windows maximum command length limit of {1} characters.</value></data>
+  <data name="CoreCliUnavailable" xml:space="preserve"><value>The Windows Sandbox CLI is not available on this host.</value></data>
+  <data name="CoreCliConfigTooLarge" xml:space="preserve"><value>The configuration is too large for a wsb start command line.</value></data>
+  <data name="CoreCliNoSandboxId" xml:space="preserve"><value>The Windows Sandbox CLI did not report a sandbox ID.</value></data>
+  <data name="CoreCliNoExitCode" xml:space="preserve"><value>The Windows Sandbox CLI did not report an exit code.</value></data>
+  <data name="CoreCliUnparsable" xml:space="preserve"><value>The Windows Sandbox CLI returned output that could not be parsed.</value></data>
+  <data name="CoreCliExitFailure" xml:space="preserve"><value>wsb {0} failed with exit code {1}.</value></data>
+  <data name="CoreCliStdErrFailure" xml:space="preserve"><value>wsb {0} failed: {1}</value></data>
+  <data name="CoreCliTimeout" xml:space="preserve"><value>wsb {0} did not finish within {1} seconds; the operation may still have completed.</value></data>
+  <data name="CoreLauncherValidationFailed" xml:space="preserve"><value>Validation failed: {0} - {1}</value></data>
+  <data name="CoreLauncherFailed" xml:space="preserve"><value>Failed to launch Windows Sandbox.</value></data>
+  <data name="CoreLauncherException" xml:space="preserve"><value>Failed to launch Windows Sandbox: {0}</value></data>
+  <data name="CoreLauncherNotInstalled" xml:space="preserve"><value>Windows Sandbox is not installed or enabled on this host.</value></data>
 </root>

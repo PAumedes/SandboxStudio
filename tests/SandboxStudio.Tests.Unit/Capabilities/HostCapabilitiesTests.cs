@@ -1,5 +1,6 @@
 using FluentAssertions;
 using SandboxStudio.Core.Capabilities;
+using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Models;
 using Xunit;
 
@@ -638,5 +639,57 @@ public sealed class HostCapabilitiesTests
 
         // Assert
         act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void GetAvailability_WhenBuildIsBelowRequirement_EmitsReasonKeyAndArgs()
+    {
+        // Arrange
+        var sut = CreateSut(osBuild: 22631);
+
+        // Act
+        var result = sut.GetAvailability(SandboxFeature.WsbCli);
+
+        // Assert
+        result.ReasonKey.Should().Be(MessageKeys.ReasonRequiresBuild);
+        result.ReasonArgs.Should().BeEquivalentTo(["26100", "22631"], "build numbers are identifiers — kept ungrouped across cultures");
+    }
+
+    [Fact]
+    public void GetAvailability_WhenPolicyDisabled_EmitsReasonKeyWithPolicyName()
+    {
+        // Arrange
+        var sut = CreateSut(
+            osBuild: 26100,
+            policyValues: new Dictionary<string, object?> { ["AllowNetworking"] = 0 });
+
+        // Act
+        var result = sut.GetAvailability(SandboxFeature.Networking);
+
+        // Assert
+        result.ReasonKey.Should().Be(MessageKeys.ReasonDisabledByPolicy);
+        result.ReasonArgs.Should().BeEquivalentTo(["AllowNetworking"]);
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenSettingBlocked_EmitsMessageKeyAndArgs()
+    {
+        // Arrange
+        var sut = CreateSut(
+            osBuild: 26100,
+            policyValues: new Dictionary<string, object?> { ["AllowMappedFolders"] = 0 });
+        var config = new WsbConfiguration
+        {
+            MappedFolders = [new WsbMappedFolder { HostFolder = "C:\\Host", SandboxFolder = "C:\\Guest" }]
+        };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        var entry = overrides.Should().ContainSingle().Subject;
+        entry.MessageKey.Should().Be(MessageKeys.PolicyMappedFoldersDisabled);
+        entry.MessageArgs.Should().BeEquivalentTo(["AllowMappedFolders"]);
+        entry.Message.Should().Contain("AllowMappedFolders", "the English fallback remains populated");
     }
 }

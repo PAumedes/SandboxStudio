@@ -373,12 +373,12 @@ public sealed partial class MainWindow : Window
             "; ",
             result.Messages
                 .Where(message => message.Severity != ValidationSeverity.Info)
-                .Select(message => Localizer.Format("ValidationMessageFormat", message.PropertyName, message.Message)));
+                .Select(message => Localizer.Format("ValidationMessageFormat", message.PropertyName, Localizer.Core(message.MessageKey, message.MessageArgs, message.Message))));
 
     private static string FormatValidationErrors(ValidationResult result) =>
         string.Join(
             "; ",
             result.Messages
                 .Where(message => message.Severity == ValidationSeverity.Error)
-                .Select(message => Localizer.Format("ValidationMessageFormat", message.PropertyName, message.Message)));
+                .Select(message => Localizer.Format("ValidationMessageFormat", message.PropertyName, Localizer.Core(message.MessageKey, message.MessageArgs, message.Message))));
 }

@@ -115,9 +115,10 @@ public sealed partial class EditProfileDialog : ContentDialog
             return;
         }
 
+        var reason = Localizer.Core(availability.ReasonKey, availability.ReasonArgs, availability.Reason);
         caption.Text = label is null
-            ? $"\u26A0 {availability.Reason}"
-            : $"\u26A0 {Localizer.Format("AvailabilityCaptionFormat", label, availability.Reason)}";
+            ? $"\u26A0 {reason}"
+            : $"\u26A0 {Localizer.Format("AvailabilityCaptionFormat", label, reason)}";
         caption.Visibility = Visibility.Visible;
     }
 
@@ -127,7 +128,7 @@ public sealed partial class EditProfileDialog : ContentDialog
         PolicyOverrideInfoBar.IsOpen = policyOverrides.Count > 0;
         if (policyOverrides.Count > 0)
         {
-            PolicyOverrideInfoBar.Message = string.Join(" ", policyOverrides.Select(o => o.Message));
+            PolicyOverrideInfoBar.Message = string.Join(" ", policyOverrides.Select(o => Localizer.Core(o.MessageKey, o.MessageArgs, o.Message)));
         }
     }
 
@@ -272,10 +273,10 @@ public sealed partial class EditProfileDialog : ContentDialog
 
             var warningMessages = validationResult.Messages
                 .Where(message => message.Severity == ValidationSeverity.Warning)
-                .Select(message => Localizer.Format("ValidationMessageFormat", message.PropertyName, message.Message))
+                .Select(message => Localizer.Format("ValidationMessageFormat", message.PropertyName, Localizer.Core(message.MessageKey, message.MessageArgs, message.Message)))
                 .ToList();
             var overrideMessages = ViewModel.GetPolicyOverrides()
-                .Select(policyOverride => policyOverride.Message)
+                .Select(policyOverride => Localizer.Core(policyOverride.MessageKey, policyOverride.MessageArgs, policyOverride.Message))
                 .ToList();
             var notes = new List<string>();
             if (warningMessages.Count > 0)

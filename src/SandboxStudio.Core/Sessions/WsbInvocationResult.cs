@@ -12,7 +12,8 @@ namespace SandboxStudio.Core.Sessions;
 /// Whether the CLI process actually ran. <see langword="false"/> means the command
 /// provably never reached <c>wsb.exe</c>, so falling back to another launch path is safe.
 /// </param>
-public sealed record WsbInvocationResult(int ExitCode, string StdOut, string StdErr, bool Spawned = true);
+/// <param name="TimedOut">Whether the invocation was killed after exceeding its timeout.</param>
+public sealed record WsbInvocationResult(int ExitCode, string StdOut, string StdErr, bool Spawned = true, bool TimedOut = false);
 
 /// <summary>
 /// Runs a configured <c>wsb.exe</c> process. <paramref name="captureOutput"/> requests

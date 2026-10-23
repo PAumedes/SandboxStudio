@@ -1,3 +1,4 @@
+using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Models;
 
 namespace SandboxStudio.Core.Validation;
@@ -51,13 +52,17 @@ public sealed class WsbValidator : IWsbValidator
         {
             result.AddError(
                 nameof(WsbConfiguration.MemoryInMB),
-                $"Memory allocation of {memoryMb.Value} MB is below the absolute minimum required ({MinMemoryMb} MB).");
+                $"Memory allocation of {memoryMb.Value} MB is below the absolute minimum required ({MinMemoryMb} MB).",
+                MessageKeys.MemoryBelowMinimum,
+                [memoryMb.Value, MinMemoryMb]);
         }
         else if (memoryMb.Value < RecommendedMinMemoryMb)
         {
             result.AddWarning(
                 nameof(WsbConfiguration.MemoryInMB),
-                $"Memory allocation of {memoryMb.Value} MB is below the recommended minimum of {RecommendedMinMemoryMb} MB; performance may be severely degraded.");
+                $"Memory allocation of {memoryMb.Value} MB is below the recommended minimum of {RecommendedMinMemoryMb} MB; performance may be severely degraded.",
+                MessageKeys.MemoryBelowRecommended,
+                [memoryMb.Value, RecommendedMinMemoryMb]);
         }
     }
 
@@ -72,7 +77,7 @@ public sealed class WsbValidator : IWsbValidator
 
         if (string.IsNullOrWhiteSpace(value))
         {
-            result.AddError(propertyName, $"{propertyName} cannot be empty or whitespace.");
+            result.AddError(propertyName, $"{propertyName} cannot be empty or whitespace.", MessageKeys.ValueEmpty, [propertyName]);
             return;
         }
 
@@ -80,7 +85,9 @@ public sealed class WsbValidator : IWsbValidator
         {
             result.AddError(
                 propertyName,
-                $"Invalid value '{value}' for {propertyName}. Allowed values are 'Enable', 'Disable', or 'Default'.");
+                $"Invalid value '{value}' for {propertyName}. Allowed values are 'Enable', 'Disable', or 'Default'.",
+                MessageKeys.InvalidTriState,
+                [value, propertyName]);
         }
     }
 
@@ -96,26 +103,26 @@ public sealed class WsbValidator : IWsbValidator
 
             if (string.IsNullOrWhiteSpace(folder.HostFolder))
             {
-                result.AddError($"{prefix}.HostFolder", "HostFolder path cannot be empty.");
+                result.AddError($"{prefix}.HostFolder", "HostFolder path cannot be empty.", MessageKeys.HostFolderEmpty);
             }
             else
             {
                 var invalidChars = Path.GetInvalidPathChars();
                 if (folder.HostFolder.IndexOfAny(invalidChars) >= 0 || folder.HostFolder.IndexOfAny(WildcardChars) >= 0)
                 {
-                    result.AddError($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' contains invalid path characters.");
+                    result.AddError($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' contains invalid path characters.", MessageKeys.PathInvalidChars, ["HostFolder", folder.HostFolder]);
                 }
                 else if (!Path.IsPathFullyQualified(folder.HostFolder))
                 {
-                    result.AddError($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' must be a fully qualified absolute path.");
+                    result.AddError($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' must be a fully qualified absolute path.", MessageKeys.PathNotQualified, ["HostFolder", folder.HostFolder]);
                 }
                 else if (!seenHostFolders.Add(folder.HostFolder))
                 {
-                    result.AddError($"{prefix}.HostFolder", $"Duplicate HostFolder mapping detected: '{folder.HostFolder}'.");
+                    result.AddError($"{prefix}.HostFolder", $"Duplicate HostFolder mapping detected: '{folder.HostFolder}'.", MessageKeys.HostFolderDuplicate, [folder.HostFolder]);
                 }
                 else if (!Directory.Exists(folder.HostFolder))
                 {
-                    result.AddWarning($"{prefix}.HostFolder", $"HostFolder directory '{folder.HostFolder}' does not exist on the host. Windows Sandbox will fail to start unless created.");
+                    result.AddWarning($"{prefix}.HostFolder", $"HostFolder directory '{folder.HostFolder}' does not exist on the host. Windows Sandbox will fail to start unless created.", MessageKeys.HostFolderMissing, [folder.HostFolder]);
                 }
             }
 
@@ -124,22 +131,22 @@ public sealed class WsbValidator : IWsbValidator
                 var invalidChars = Path.GetInvalidPathChars();
                 if (folder.SandboxFolder.IndexOfAny(invalidChars) >= 0 || folder.SandboxFolder.IndexOfAny(WildcardChars) >= 0)
                 {
-                    result.AddError($"{prefix}.SandboxFolder", $"SandboxFolder path '{folder.SandboxFolder}' contains invalid path characters.");
+                    result.AddError($"{prefix}.SandboxFolder", $"SandboxFolder path '{folder.SandboxFolder}' contains invalid path characters.", MessageKeys.PathInvalidChars, ["SandboxFolder", folder.SandboxFolder]);
                 }
                 else if (!Path.IsPathFullyQualified(folder.SandboxFolder))
                 {
-                    result.AddError($"{prefix}.SandboxFolder", $"SandboxFolder path '{folder.SandboxFolder}' must be a fully qualified absolute path.");
+                    result.AddError($"{prefix}.SandboxFolder", $"SandboxFolder path '{folder.SandboxFolder}' must be a fully qualified absolute path.", MessageKeys.PathNotQualified, ["SandboxFolder", folder.SandboxFolder]);
                 }
                 else if (!seenSandboxFolders.Add(folder.SandboxFolder))
                 {
-                    result.AddError($"{prefix}.SandboxFolder", $"Duplicate SandboxFolder destination detected: '{folder.SandboxFolder}'.");
+                    result.AddError($"{prefix}.SandboxFolder", $"Duplicate SandboxFolder destination detected: '{folder.SandboxFolder}'.", MessageKeys.SandboxFolderDuplicate, [folder.SandboxFolder]);
                 }
             }
 
             if (!string.Equals(folder.ReadOnly, "true", StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(folder.ReadOnly, "false", StringComparison.OrdinalIgnoreCase))
             {
-                result.AddError($"{prefix}.ReadOnly", $"ReadOnly value must be 'true' or 'false', found '{folder.ReadOnly}'.");
+                result.AddError($"{prefix}.ReadOnly", $"ReadOnly value must be 'true' or 'false', found '{folder.ReadOnly}'.", MessageKeys.ReadOnlyInvalid, [folder.ReadOnly]);
             }
         }
     }
@@ -155,7 +162,9 @@ public sealed class WsbValidator : IWsbValidator
         {
             result.AddError(
                 nameof(WsbConfiguration.LogonCommand),
-                $"Logon command length ({logonCommand.Command.Length}) exceeds the Windows maximum command length limit of {MaxCommandLineLength} characters.");
+                $"Logon command length ({logonCommand.Command.Length}) exceeds the Windows maximum command length limit of {MaxCommandLineLength} characters.",
+                MessageKeys.LogonTooLong,
+                [logonCommand.Command.Length, MaxCommandLineLength]);
         }
     }
 }

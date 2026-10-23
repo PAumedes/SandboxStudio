@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using SandboxStudio.Core.Execution;
+using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Sessions;
@@ -278,5 +279,87 @@ public sealed class SandboxLauncherTests : IDisposable
         result.IsSuccess.Should().BeTrue();
         result.WsbFilePath.Should().NotBeNull();
         processStarterInvoked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LaunchAsync_WhenValidationFails_EmitsValidationKey()
+    {
+        // Arrange
+        var invalidConfig = new WsbConfiguration();
+        var failureResult = new ValidationResult();
+        failureResult.AddError("MemoryInMB", "Invalid memory");
+        _mockValidator.Setup(v => v.Validate(invalidConfig)).Returns(failureResult);
+
+        // Act
+        var result = await _sut.LaunchAsync(invalidConfig);
+
+        // Assert
+        result.ErrorKey.Should().Be(MessageKeys.LauncherValidationFailed);
+        result.ErrorArgs.Should().BeEquivalentTo(["MemoryInMB", "Invalid memory"]);
+    }
+
+    [Fact]
+    public async Task LaunchAsync_WhenSandboxUnavailable_EmitsNotInstalledKey()
+    {
+        // Arrange
+        var sut = new SandboxLauncher(
+            _mockSerializer.Object,
+            _mockValidator.Object,
+            _mockRepository.Object,
+            _tempDir,
+            sandboxAvailability: () => false);
+        _mockValidator.Setup(v => v.Validate(It.IsAny<WsbConfiguration>())).Returns(new ValidationResult());
+
+        // Act
+        var result = await sut.LaunchAsync(new WsbConfiguration());
+
+        // Assert
+        result.ErrorKey.Should().Be(MessageKeys.LauncherNotInstalled);
+    }
+
+    [Fact]
+    public async Task LaunchAsync_WhenCliRanAndFailed_PropagatesCliErrorKey()
+    {
+        // Arrange
+        var mockSessions = new Mock<ISandboxSessionManager>();
+        mockSessions.SetupGet(s => s.IsSupported).Returns(true);
+        mockSessions
+            .Setup(s => s.StartAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(WsbStartResult.Failure("boom", errorKey: MessageKeys.CliNoSandboxId));
+        _mockValidator.Setup(v => v.Validate(It.IsAny<WsbConfiguration>())).Returns(new ValidationResult());
+        _mockSerializer.Setup(s => s.Serialize(It.IsAny<WsbConfiguration>())).Returns("<Configuration/>");
+
+        var sut = new SandboxLauncher(
+            _mockSerializer.Object,
+            _mockValidator.Object,
+            _mockRepository.Object,
+            _tempDir,
+            sandboxAvailability: () => true,
+            sessionManager: mockSessions.Object);
+
+        // Act
+        var result = await sut.LaunchAsync(new WsbConfiguration());
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorKey.Should().Be(MessageKeys.CliNoSandboxId, "the CLI failure key propagates to the launch result");
+    }
+
+    [Fact]
+    public async Task LaunchAsync_WhenValidationErrorIsKeyed_PropagatesInnerKeyAndArgs()
+    {
+        // Arrange
+        var invalidConfig = new WsbConfiguration();
+        var failureResult = new ValidationResult();
+        failureResult.AddError("MemoryInMB", "English fallback detail", MessageKeys.MemoryBelowMinimum, [128, 256]);
+        _mockValidator.Setup(v => v.Validate(invalidConfig)).Returns(failureResult);
+
+        // Act
+        var result = await _sut.LaunchAsync(invalidConfig);
+
+        // Assert — the structured inner key propagates so hosts can localize the
+        // actual validation message rather than a wrapper around English text.
+        result.ErrorKey.Should().Be(MessageKeys.MemoryBelowMinimum);
+        result.ErrorArgs.Should().BeEquivalentTo([128, 256]);
     }
 }
