@@ -1,10 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>SandboxStudio.Core</RootNamespace>
-    <AssemblyName>SandboxStudio.Core</AssemblyName>
-    <!-- Code documentation required for Core library -->
-    <NoWarn>$(NoWarn)</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
