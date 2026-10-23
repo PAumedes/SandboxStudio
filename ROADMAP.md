@@ -59,7 +59,8 @@ Status: Implemented and locally build- and visually verified; native title-bar i
 
 ## Phase 6 — Theme and localization
 
-- Follow the operating-system theme with `ElementTheme.Default` and matching title-bar caption foreground.
+- Status: Partially implemented. The app follows the operating-system theme (no pinned `RequestedTheme`); `MainWindow` syncs `AppWindow.TitleBar` caption-button foreground/hover/pressed colors on `ActualThemeChanged` so the custom title bar stays legible across theme switches. Remaining: `.resw` localization and the language override.
+- ~~Follow the operating-system theme with `ElementTheme.Default` and matching title-bar caption foreground.~~ Implemented — `ApplyTitleBarCaptionColors` tracks `ActualThemeChanged`.
 - Add English and Spanish `.resw` resources.
 - Use the operating-system language on first launch and provide a stored language override; initially apply a language change after restart.
 

@@ -35,6 +35,16 @@ public sealed partial class MainWindow : Window
         SetTitleBar(TitleBarDragRegion);
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "SandboxStudio.ico"));
 
+        // The custom title bar must track the OS theme for legible caption buttons.
+        // Title-bar color customization is honored on Windows 11 only; on Windows 10
+        // the setters are documented no-ops and the system-drawn defaults apply.
+        if (Content is FrameworkElement rootElement)
+        {
+            rootElement.ActualThemeChanged += (_, _) => ApplyTitleBarCaptionColors(rootElement);
+        }
+
+        ApplyTitleBarCaptionColors(Content as FrameworkElement);
+
         // Check Sandbox availability
         SandboxStatusInfoBar.IsOpen = !ViewModel.IsSandboxInstalled;
         if (ViewModel.SandboxUnavailableReason is { } unavailableReason)
@@ -58,6 +68,30 @@ public sealed partial class MainWindow : Window
     /// </summary>
     public MainWindow() : this(App.Host.Services.GetRequiredService<MainViewModel>())
     {
+    }
+
+    private void ApplyTitleBarCaptionColors(FrameworkElement? themedElement)
+    {
+        if (!Microsoft.UI.Windowing.AppWindowTitleBar.IsCustomizationSupported())
+        {
+            return;
+        }
+
+        var isLight = themedElement?.ActualTheme == ElementTheme.Light;
+        var foreground = isLight
+            ? Windows.UI.Color.FromArgb(0xFF, 0x1B, 0x1B, 0x1B)
+            : Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
+        var hoverBackground = Windows.UI.Color.FromArgb(0x1A, foreground.R, foreground.G, foreground.B);
+        var pressedBackground = Windows.UI.Color.FromArgb(0x33, foreground.R, foreground.G, foreground.B);
+
+        var titleBar = AppWindow.TitleBar;
+        titleBar.ButtonForegroundColor = foreground;
+        titleBar.ButtonHoverForegroundColor = foreground;
+        titleBar.ButtonPressedForegroundColor = foreground;
+        titleBar.ButtonBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0);
+        titleBar.ButtonInactiveBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0);
+        titleBar.ButtonHoverBackgroundColor = hoverBackground;
+        titleBar.ButtonPressedBackgroundColor = pressedBackground;
     }
 
     private async void OnLaunchClicked(object sender, RoutedEventArgs e)
