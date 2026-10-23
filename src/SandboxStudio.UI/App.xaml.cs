@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Execution;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Storage;
@@ -37,6 +38,7 @@ public sealed partial class App : Application
                 services.AddSingleton<WsbExportService>();
                 services.AddSingleton<IProfileRepository, JsonProfileRepository>();
                 services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
+                services.AddSingleton<IHostCapabilities, HostCapabilities>();
 
                 // ViewModels
                 services.AddTransient<MainViewModel>();

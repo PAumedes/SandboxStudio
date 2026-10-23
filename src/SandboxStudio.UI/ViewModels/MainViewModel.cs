@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Execution;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Storage;
@@ -46,14 +47,44 @@ public sealed partial class MainViewModel : ObservableObject
     public partial bool IsSandboxInstalled { get; set; }
 
     /// <summary>
+    /// Gets or sets the engine status text shown in the status bar.
+    /// </summary>
+    [ObservableProperty]
+    public partial string? SandboxStatusMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the explanation shown when Windows Sandbox cannot be used, or null when it can.
+    /// </summary>
+    [ObservableProperty]
+    public partial string? SandboxUnavailableReason { get; set; }
+
+    /// <summary>
     /// Initializes a new instance of <see cref="MainViewModel"/>.
     /// </summary>
-    public MainViewModel(IProfileRepository repository, ISandboxLauncher launcher)
+    public MainViewModel(
+        IProfileRepository repository,
+        ISandboxLauncher launcher,
+        IHostCapabilities capabilities)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _launcher = launcher ?? throw new ArgumentNullException(nameof(launcher));
+        ArgumentNullException.ThrowIfNull(capabilities);
 
-        IsSandboxInstalled = _launcher.IsSandboxAvailable();
+        IsSandboxInstalled = capabilities.SandboxStatus == HostSandboxStatus.Available;
+        SandboxStatusMessage = capabilities.SandboxStatus switch
+        {
+            HostSandboxStatus.Available => "Windows Sandbox Engine Ready",
+            HostSandboxStatus.UnsupportedEdition => "Windows Sandbox requires a Pro, Enterprise, or Education edition",
+            _ => "Windows Sandbox Engine Unavailable"
+        };
+        SandboxUnavailableReason = capabilities.SandboxStatus switch
+        {
+            HostSandboxStatus.UnsupportedEdition =>
+                "Windows Sandbox requires a Pro, Enterprise, or Education edition of Windows.",
+            HostSandboxStatus.NotInstalled =>
+                "Windows Sandbox is not enabled on this host. Profiles can be created, but launching them requires the Windows Sandbox optional feature.",
+            _ => null
+        };
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Execution;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Serialization;
@@ -57,6 +58,7 @@ public sealed class SanitySmokeTests : IDisposable
         services.AddSingleton<IWsbValidator, WsbValidator>();
         services.AddSingleton<IProfileRepository>(_ => new JsonProfileRepository(_smokeTempDir));
         services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
+        services.AddSingleton<IHostCapabilities, HostCapabilities>();
 
         using var provider = services.BuildServiceProvider();
 
@@ -65,6 +67,7 @@ public sealed class SanitySmokeTests : IDisposable
         provider.GetRequiredService<IWsbValidator>().Should().NotBeNull();
         provider.GetRequiredService<IProfileRepository>().Should().NotBeNull();
         provider.GetRequiredService<ISandboxLauncher>().Should().NotBeNull();
+        provider.GetRequiredService<IHostCapabilities>().Should().NotBeNull();
     }
 
     [Fact]

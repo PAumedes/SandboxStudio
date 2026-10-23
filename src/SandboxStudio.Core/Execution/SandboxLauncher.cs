@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Storage;
@@ -20,9 +21,7 @@ public sealed class SandboxLauncher : ISandboxLauncher
     private readonly Func<ProcessStartInfo, Process?> _processStarter;
     private readonly Func<bool> _sandboxAvailability;
 
-    private static readonly string WindowsSandboxExePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.System),
-        "WindowsSandbox.exe");
+    private static readonly string WindowsSandboxExePath = SandboxHostPaths.WindowsSandboxExe;
 
     /// <summary>
     /// Initializes a new instance of <see cref="SandboxLauncher"/>.

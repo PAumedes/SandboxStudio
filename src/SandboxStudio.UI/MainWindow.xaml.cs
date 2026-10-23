@@ -34,9 +34,12 @@ public sealed partial class MainWindow : Window
 
         // Check Sandbox availability
         SandboxStatusInfoBar.IsOpen = !ViewModel.IsSandboxInstalled;
-        SandboxEngineStatus.Text = ViewModel.IsSandboxInstalled
-            ? "Windows Sandbox Engine Ready"
-            : "Windows Sandbox Engine Unavailable";
+        if (ViewModel.SandboxUnavailableReason is { } unavailableReason)
+        {
+            SandboxStatusInfoBar.Message = unavailableReason;
+        }
+
+        SandboxEngineStatus.Text = ViewModel.SandboxStatusMessage ?? string.Empty;
 
         // Auto-load profiles on startup
         _ = ViewModel.LoadProfilesAsync();

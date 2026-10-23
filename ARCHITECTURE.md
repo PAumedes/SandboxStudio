@@ -13,6 +13,7 @@ graph TD
         Serialization[IWsbSerializer: WsbSerializer]
         Storage[IProfileRepository: JsonProfileRepository]
         Execution[ISandboxLauncher: SandboxLauncher]
+        Capabilities[IHostCapabilities: HostCapabilities]
     end
 
     Execution --> OS[Windows Sandbox Subsystem]
@@ -28,6 +29,7 @@ Pure domain library with zero UI dependencies:
 * **`Validation`**: Enforces system constraints (memory bounds $\ge 256$ MB, command length limits, valid path syntax, read-only flags).
 * **`Storage`**: Thread-safe atomic file persistence for user-defined profiles and built-in curated presets.
 * **`Execution`**: Validates configuration, materializes transient `.wsb` files, and invokes the host Windows Sandbox process.
+* **`Capabilities`**: Computes effective per-feature availability from host OS build and Windows Sandbox policy registry values, and reports overall Sandbox host status.
 
 ### 2. `SandboxStudio.UI` (Target: `net10.0-windows10.0.19041.0`)
 Presentation layer powered by Windows App SDK and WinUI 3:
