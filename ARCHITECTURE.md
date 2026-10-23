@@ -32,6 +32,7 @@ Pure domain library with zero UI dependencies:
 * **`Execution`**: Validates configuration, then launches through the `wsb` CLI when supported (capturing the sandbox ID) or materializes a transient `.wsb` file for the host Windows Sandbox process.
 * **`Capabilities`**: Computes effective per-feature availability from host OS build and Windows Sandbox policy registry values, and reports overall Sandbox host status.
 * **`Sessions`**: Discovers and controls live sandbox sessions through the `wsb` CLI (Windows 11 24H2+): starts sessions from inline configuration XML, lists them from `--raw` JSON output, executes commands inside them (exit code only — output cannot be captured), reports their IP addresses, shares host folders into them, and stops or connects to them by sandbox ID.
+* **`Scripts`**: Packages multi-line logon commands into `.cmd` files under `%LocalAppData%/SandboxStudio/Scripts`, delivered to the sandbox through a managed read-only mapped folder at `C:\SandboxStudio\Scripts` — Microsoft's recommended pattern for multi-step setup.
 
 ### 2. `SandboxStudio.UI` (Target: `net10.0-windows10.0.19041.0`)
 Presentation layer powered by Windows App SDK and WinUI 3:

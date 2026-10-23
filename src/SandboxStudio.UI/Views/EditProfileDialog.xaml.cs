@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Validation;
 using SandboxStudio.UI.ViewModels;
 
@@ -14,6 +15,7 @@ namespace SandboxStudio.UI.Views;
 public sealed partial class EditProfileDialog : ContentDialog
 {
     private readonly IWsbValidator _validator;
+    private readonly ILogonScriptService _scriptService;
 
     /// <summary>
     /// Gets the ViewModel backing the dialog.
@@ -37,10 +39,11 @@ public sealed partial class EditProfileDialog : ContentDialog
     /// <see cref="EditProfileViewModel.SetProfile"/> must be called on <paramref name="viewModel"/>
     /// before constructing the dialog so the draft is populated.
     /// </remarks>
-    public EditProfileDialog(EditProfileViewModel viewModel, IWsbValidator validator)
+    public EditProfileDialog(EditProfileViewModel viewModel, IWsbValidator validator, ILogonScriptService scriptService)
     {
         ViewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+        _scriptService = scriptService ?? throw new ArgumentNullException(nameof(scriptService));
 
         InitializeComponent();
 
@@ -49,12 +52,27 @@ public sealed partial class EditProfileDialog : ContentDialog
         DescriptionTextBox.Text = draft.Description ?? string.Empty;
         TagsTextBox.Text = draft.Tags is { } tags ? ProfileTags.Format(tags) : string.Empty;
         MemoryTextBox.Text = draft.Configuration.MemoryInMB?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
-        StartupCommandTextBox.Text = draft.Configuration.LogonCommand?.Command ?? string.Empty;
+        if (draft.LogonScriptCommands is { Count: > 0 } scriptCommands)
+        {
+            ScriptModeCheckBox.IsChecked = true;
+            StartupCommandTextBox.Text = string.Join("\r", scriptCommands);
+        }
+        else
+        {
+            StartupCommandTextBox.Text = draft.Configuration.LogonCommand?.Command ?? string.Empty;
+        }
+
+        UpdateScriptModeControls();
 
         RefreshPolicyOverrideInfoBar();
         UpdateWritableMappingControls();
         ApplyAvailabilityCaptions();
     }
+
+    private void OnScriptModeToggled(object sender, RoutedEventArgs e) => UpdateScriptModeControls();
+
+    private void UpdateScriptModeControls() =>
+        StartupCommandTextBox.AcceptsReturn = ScriptModeCheckBox.IsChecked == true;
 
     private void ApplyAvailabilityCaptions()
     {
@@ -177,10 +195,43 @@ public sealed partial class EditProfileDialog : ContentDialog
             draft.Description = DescriptionTextBox.Text;
             draft.Tags = ProfileTags.Parse(TagsTextBox.Text);
             draft.Configuration.MemoryInMB = memoryInMb;
-            var startupCommand = StartupCommandTextBox.Text;
-            draft.Configuration.LogonCommand = string.IsNullOrWhiteSpace(startupCommand)
-                ? null
-                : new WsbLogonCommand { Command = startupCommand };
+            // WinUI text boxes return '\r' line separators, not '\n'.
+            var lines = StartupCommandTextBox.Text
+                .Split('\r', '\n')
+                .Select(line => line.Trim())
+                .Where(line => line.Length > 0)
+                .ToList();
+            var scriptCommands = ScriptModeCheckBox.IsChecked == true ? lines : null;
+            var wasScriptBacked = _scriptService.IsScriptBacked(draft.Configuration, draft.Id);
+            var previousCommand = draft.Configuration.LogonCommand?.Command;
+
+            if (scriptCommands is { Count: > 0 })
+            {
+                await _scriptService.ApplyAsync(draft.Configuration, draft.Id, scriptCommands);
+                draft.LogonScriptCommands = scriptCommands;
+
+                // Surface the managed mount in the folder list; ApplyAsync repairs
+                // it if the row was edited or removed.
+                var managedFolder = draft.Configuration.MappedFolders.FirstOrDefault(_scriptService.IsManagedMapping);
+                if (managedFolder is not null && !ViewModel.MappedFolders.Contains(managedFolder))
+                {
+                    ViewModel.MappedFolders.Add(managedFolder);
+                }
+            }
+            else
+            {
+                // Releasing script mode (or an empty box) removes managed script
+                // artifacts; the first non-empty line supplies a plain logon
+                // command — unless it is the packaged command we just tore down.
+                await _scriptService.UnapplyAsync(draft.Configuration, draft.Id);
+                draft.LogonScriptCommands = null;
+                var startupCommand = lines.FirstOrDefault();
+                var resurrectingTornDownScript = wasScriptBacked &&
+                    string.Equals(startupCommand, previousCommand, StringComparison.Ordinal);
+                draft.Configuration.LogonCommand = startupCommand is null || resurrectingTornDownScript
+                    ? null
+                    : new WsbLogonCommand { Command = startupCommand };
+            }
 
             if (draft.Configuration.MappedFolders.Any(folder => !folder.IsReadOnly) &&
                 AcknowledgeWritableMapping.IsChecked != true)
@@ -199,6 +250,13 @@ public sealed partial class EditProfileDialog : ContentDialog
                 return;
             }
 
+            // The save landed — now it is safe to drop the script file when the
+            // profile no longer uses script mode.
+            if (scriptCommands is not { Count: > 0 })
+            {
+                await _scriptService.DeleteAsync(draft.Id);
+            }
+
             var warningMessages = validationResult.Messages
                 .Where(message => message.Severity == ValidationSeverity.Warning)
                 .Select(message => $"{message.PropertyName}: {message.Message}")
@@ -215,6 +273,11 @@ public sealed partial class EditProfileDialog : ContentDialog
             if (overrideMessages.Count > 0)
             {
                 notes.Add($"host policy overrides: {string.Join("; ", overrideMessages)}");
+            }
+
+            if (scriptCommands is { Count: > 0 } && _scriptService.HasNonAsciiContent(scriptCommands))
+            {
+                notes.Add("the script contains non-ASCII characters that cmd.exe may decode incorrectly");
             }
 
             SavedSuccessfully = true;

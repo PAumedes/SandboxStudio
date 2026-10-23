@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Storage;
 using Xunit;
 
@@ -197,6 +198,66 @@ public sealed class ProfileDuplicationServiceTests
                 .Append(source.Name)
                 .Select(name => new SandboxProfile { Name = name })
                 .ToList());
+    }
+
+    [Fact]
+    public async Task DuplicateAsync_WhenSourceIsScriptBacked_RepackagesScriptForNewId()
+    {
+        // Arrange
+        var source = CreateSourceProfile();
+        source.LogonScriptCommands = new() { "echo one", "echo two" };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(source.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(source);
+        _mockRepository
+            .Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SandboxProfile> { source });
+        _mockRepository
+            .Setup(r => r.SaveAsync(It.IsAny<SandboxProfile>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var mockScripts = new Mock<ILogonScriptService>();
+        var sut = new ProfileDuplicationService(_mockRepository.Object, mockScripts.Object);
+
+        // Act
+        var result = await sut.DuplicateAsync(source.Id);
+
+        // Assert — the duplicate gets its own script file, not the source's
+        result.Should().NotBeNull();
+        mockScripts.Verify(
+            s => s.ApplyAsync(
+                result!.Configuration,
+                result!.Id,
+                It.Is<IReadOnlyList<string>>(commands => commands.SequenceEqual(source.LogonScriptCommands)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        result!.Id.Should().NotBe(source.Id);
+    }
+
+    [Fact]
+    public async Task DuplicateAsync_WhenSourceIsNotScriptBacked_DoesNotTouchScriptService()
+    {
+        // Arrange
+        var source = CreateSourceProfile();
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(source.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(source);
+        _mockRepository
+            .Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<SandboxProfile> { source });
+        _mockRepository
+            .Setup(r => r.SaveAsync(It.IsAny<SandboxProfile>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var mockScripts = new Mock<ILogonScriptService>();
+        var sut = new ProfileDuplicationService(_mockRepository.Object, mockScripts.Object);
+
+        // Act
+        await sut.DuplicateAsync(source.Id);
+
+        // Assert
+        mockScripts.VerifyNoOtherCalls();
     }
 
     private static SandboxProfile CreateSourceProfile() => new()

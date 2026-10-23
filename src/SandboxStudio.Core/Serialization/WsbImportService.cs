@@ -1,4 +1,5 @@
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Storage;
 using SandboxStudio.Core.Validation;
 
@@ -12,15 +13,25 @@ public sealed class WsbImportService
     private readonly IWsbSerializer _serializer;
     private readonly IWsbValidator _validator;
     private readonly IProfileRepository _repository;
+    private readonly ILogonScriptService? _scripts;
 
     /// <summary>
     /// Initializes a new instance of <see cref="WsbImportService"/>.
     /// </summary>
-    public WsbImportService(IWsbSerializer serializer, IWsbValidator validator, IProfileRepository repository)
+    /// <param name="serializer">.wsb deserializer.</param>
+    /// <param name="validator">Configuration validator.</param>
+    /// <param name="repository">Profile persistence.</param>
+    /// <param name="scripts">Logon-script packager; when provided, imported managed-script commands are retargeted to the new profile's id.</param>
+    public WsbImportService(
+        IWsbSerializer serializer,
+        IWsbValidator validator,
+        IProfileRepository repository,
+        ILogonScriptService? scripts = null)
     {
         _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _scripts = scripts;
     }
 
     /// <summary>
@@ -43,6 +54,13 @@ public sealed class WsbImportService
             Description = $"Imported from {Path.GetFileName(filePath)}.",
             Configuration = configuration
         };
+
+        // A .wsb produced by another SandboxStudio profile may reference its
+        // managed logon script — retarget it to the imported profile's id.
+        if (_scripts is not null)
+        {
+            await _scripts.RehomeAsync(configuration, profile.Id, cancellationToken);
+        }
 
         var validation = _validator.Validate(configuration);
         await _repository.SaveAsync(profile, cancellationToken);

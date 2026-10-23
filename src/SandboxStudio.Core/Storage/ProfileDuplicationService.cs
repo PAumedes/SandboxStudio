@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Scripts;
 
 namespace SandboxStudio.Core.Storage;
 
@@ -13,13 +14,17 @@ public sealed class ProfileDuplicationService
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private readonly IProfileRepository _repository;
+    private readonly ILogonScriptService? _scripts;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ProfileDuplicationService"/>.
     /// </summary>
-    public ProfileDuplicationService(IProfileRepository repository)
+    /// <param name="repository">Profile persistence.</param>
+    /// <param name="scripts">Logon-script packager; when provided, script-backed profiles are re-packaged for the duplicate's new identifier.</param>
+    public ProfileDuplicationService(IProfileRepository repository, ILogonScriptService? scripts = null)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _scripts = scripts;
     }
 
     /// <summary>
@@ -49,6 +54,13 @@ public sealed class ProfileDuplicationService
 
         var duplicate = SandboxProfileCopy.Duplicate(source);
         duplicate.Name = GetUniqueCopyName(source.Name, existingNames);
+
+        // The copied logon command still references the source's script file;
+        // re-package under the duplicate's own identifier so it stays independent.
+        if (_scripts is not null && duplicate.LogonScriptCommands is { Count: > 0 } scriptCommands)
+        {
+            await _scripts.ApplyAsync(duplicate.Configuration, duplicate.Id, scriptCommands, cancellationToken);
+        }
 
         await _repository.SaveAsync(duplicate, cancellationToken);
         return duplicate;

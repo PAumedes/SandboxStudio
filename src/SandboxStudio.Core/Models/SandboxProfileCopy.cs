@@ -48,6 +48,7 @@ public static class SandboxProfileCopy
             Description = profile.Description,
             Tags = profile.Tags.ToList(),
             IconGlyph = profile.IconGlyph,
+            LogonScriptCommands = profile.LogonScriptCommands?.ToList(),
             IsFavorite = isFavorite,
             CreatedAt = createdAt,
             LastLaunchedAt = lastLaunchedAt,

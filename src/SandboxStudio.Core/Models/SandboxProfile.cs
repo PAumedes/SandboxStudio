@@ -49,4 +49,12 @@ public sealed class SandboxProfile
     /// The underlying Windows Sandbox XML configuration.
     /// </summary>
     public WsbConfiguration Configuration { get; set; } = new();
+
+    /// <summary>
+    /// Recipe for a packaged multi-line logon script (one command per entry), or
+    /// <see langword="null"/> when the logon command is a plain single command.
+    /// The packaged script and managed folder mapping live in <see cref="Configuration"/>;
+    /// this list preserves the editable source for the profile editor.
+    /// </summary>
+    public List<string>? LogonScriptCommands { get; set; }
 }

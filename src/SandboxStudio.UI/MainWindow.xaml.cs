@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Sessions;
 using SandboxStudio.Core.Storage;
@@ -108,7 +109,8 @@ public sealed partial class MainWindow : Window
 
             var dialog = new EditProfileDialog(
                 editViewModel,
-                App.Host.Services.GetRequiredService<IWsbValidator>())
+                App.Host.Services.GetRequiredService<IWsbValidator>(),
+                App.Host.Services.GetRequiredService<ILogonScriptService>())
             {
                 XamlRoot = Content.XamlRoot
             };
@@ -174,6 +176,7 @@ public sealed partial class MainWindow : Window
                 }
 
                 await ViewModel.DeleteProfileAsync(profile);
+                await App.Host.Services.GetRequiredService<ILogonScriptService>().DeleteAsync(profile.Id);
             }
             catch (Exception ex)
             {

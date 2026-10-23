@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Execution;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Storage;
 
 namespace SandboxStudio.UI.ViewModels;
@@ -14,6 +15,7 @@ namespace SandboxStudio.UI.ViewModels;
 public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IProfileRepository _repository;
+    private readonly ILogonScriptService? _scripts;
     private readonly ISandboxLauncher _launcher;
     private readonly IHostCapabilities _capabilities;
     private readonly List<SandboxProfile> _allProfiles = new();
@@ -83,11 +85,13 @@ public sealed partial class MainViewModel : ObservableObject
     public MainViewModel(
         IProfileRepository repository,
         ISandboxLauncher launcher,
-        IHostCapabilities capabilities)
+        IHostCapabilities capabilities,
+        ILogonScriptService? scripts = null)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _launcher = launcher ?? throw new ArgumentNullException(nameof(launcher));
         _capabilities = capabilities ?? throw new ArgumentNullException(nameof(capabilities));
+        _scripts = scripts;
 
         var status = capabilities.SandboxStatus;
         IsSandboxInstalled = status == HostSandboxStatus.Available;
@@ -129,6 +133,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             await _repository.EnsureDefaultPresetsAsync();
             var items = await _repository.GetAllAsync();
+
+            // Sweep script files orphaned by deletes or failed saves.
+            _scripts?.PruneOrphans(items.Select(p => p.Id).ToHashSet());
 
             _allProfiles.Clear();
             _allProfiles.AddRange(items);

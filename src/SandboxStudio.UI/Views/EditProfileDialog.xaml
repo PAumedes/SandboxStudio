@@ -143,6 +143,11 @@
                 x:Name="StartupCommandTextBox"
                 Header="Startup command (runs inside the sandbox at logon)"
                 PlaceholderText="Optional" />
+            <CheckBox
+                x:Name="ScriptModeCheckBox"
+                Content="Package as a script — each line runs in order from a read-only mapped folder"
+                Checked="OnScriptModeToggled"
+                Unchecked="OnScriptModeToggled" />
 
             <TextBlock Text="Mapped folders" />
             <TextBlock

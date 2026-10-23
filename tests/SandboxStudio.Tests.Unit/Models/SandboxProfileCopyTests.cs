@@ -157,6 +157,8 @@ public sealed class SandboxProfileCopyTests
         duplicate.Configuration.MappedFolders[0].HostFolder.Should().Be(@"C:\Projects");
         duplicate.Configuration.LogonCommand.Should().NotBeSameAs(profile.Configuration.LogonCommand);
         duplicate.Configuration.MemoryInMB.Should().Be(8192);
+        duplicate.LogonScriptCommands.Should().Equal(profile.LogonScriptCommands);
+        duplicate.LogonScriptCommands.Should().NotBeSameAs(profile.LogonScriptCommands);
     }
 
     private static SandboxProfile CreateProfile()
@@ -167,6 +169,7 @@ public sealed class SandboxProfileCopyTests
             Name = "Work profile",
             Description = "A profile used to validate deep copying.",
             Tags = new() { "Security", "Development" },
+            LogonScriptCommands = new() { "echo step1", "echo step2" },
             IconGlyph = "\uE7B8",
             IsFavorite = true,
             CreatedAt = new DateTimeOffset(2024, 2, 3, 4, 5, 6, TimeSpan.Zero),

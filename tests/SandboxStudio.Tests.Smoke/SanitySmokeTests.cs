@@ -4,6 +4,7 @@ using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Execution;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Presets;
+using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Sessions;
 using SandboxStudio.Core.Storage;
@@ -64,6 +65,7 @@ public sealed class SanitySmokeTests : IDisposable
         services.AddSingleton<WsbExportService>();
         services.AddSingleton<WsbImportService>();
         services.AddSingleton<ProfileDuplicationService>();
+        services.AddSingleton<ILogonScriptService, LogonScriptService>();
         services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
         services.AddSingleton<IHostCapabilities, HostCapabilities>();
         services.AddSingleton<CuratedPresets>();
@@ -81,6 +83,7 @@ public sealed class SanitySmokeTests : IDisposable
         provider.GetRequiredService<WsbExportService>().Should().NotBeNull();
         provider.GetRequiredService<WsbImportService>().Should().NotBeNull();
         provider.GetRequiredService<ProfileDuplicationService>().Should().NotBeNull();
+        provider.GetRequiredService<ILogonScriptService>().Should().NotBeNull();
         provider.GetRequiredService<ISandboxSessionManager>().Should().NotBeNull();
     }
 
