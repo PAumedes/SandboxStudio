@@ -70,9 +70,9 @@ Status: Implemented and locally build- and visually verified; native title-bar i
 
 ## Phase 7 — Portable Windows distribution
 
-- Produce a self-contained Windows x64 folder distribution and zip, not a single executable.
-- Keep profiles and settings under the per-user `%LOCALAPPDATA%` location; no portable-data mode is planned.
-- Verify installation and runtime behavior on a clean Windows host.
+- Status: Implemented. `scripts/publish.ps1` produces a self-contained Windows x64 folder (`dist/SandboxStudio`) and `SandboxStudio-<version>-win-x64.zip` — the folder keeps the Windows App SDK self-contained payload beside the app; it is not a single executable. The `release.yml` workflow_dispatch produces the same versioned artifact (optional `version` input overrides the `Directory.Build.props` `Version`). The published build launches on this host; verification on a fully clean machine (no dev tooling) is still worth doing before a real release.
+- Profiles and settings stay under the per-user `%LOCALAPPDATA%` location; no portable-data mode is planned.
+- ~~Verify installation and runtime behavior on a clean Windows host~~ — partially verified: the published folder runs on the development host; a from-scratch machine check remains a manual pre-release step.
 
 ## Phase 8 — Update discovery
 

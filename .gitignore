@@ -23,6 +23,10 @@ _pkginfo.txt
 *.cer
 *.pfx
 
+## Distribution
+/dist/
+/publish/
+
 ## Testing & Coverage
 TestResults/
 *.trx

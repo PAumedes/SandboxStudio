@@ -99,7 +99,16 @@ Start-Process -FilePath (Join-Path $debugOutput 'SandboxStudio.UI.exe') -Working
 
 The dashboard opens without Windows Sandbox enabled. Do not click a profile's **Launch** button unless you intend to start a Windows Sandbox VM. **New Profile** saves its JSON file under `%LOCALAPPDATA%\SandboxStudio\Profiles`. If the full Visual Studio IDE is installed, the alternative F5 route is to open `SandboxStudio.sln`, set `SandboxStudio.UI` as the startup project, select the `Debug` configuration and `x64` platform, then press **F5**.
 
-The **Package Preview** GitHub Actions workflow is manually triggered and uploads a `win-x64` zip artifact. It does not create a release.
+### Distribution
+
+`scripts/publish.ps1` produces the self-contained Windows x64 folder (`dist/SandboxStudio`) plus a versioned zip (`dist/SandboxStudio-<version>-win-x64.zip`). The build embeds the Windows App SDK (`WindowsAppSDKSelfContained`), so no runtime prerequisites are needed on the target machine — unpack the folder and run `SandboxStudio.UI.exe`. Requires Windows 10 1809 (build 17763) or later with Windows Sandbox enabled; the app runs unpackaged (no MSIX package identity).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1            # project Version
+powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1 -Version 0.2.0
+```
+
+The **Package Preview** GitHub Actions workflow is manually triggered and uploads the same `SandboxStudio-<version>-win-x64` zip artifact. It does not create a release.
 
 ## Contributing
 

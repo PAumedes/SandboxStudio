@@ -2,6 +2,11 @@ name: Package Preview
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version override (defaults to the project Version property)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -21,22 +26,41 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Publish WinUI3 Application
-        run: >
-          dotnet publish src/SandboxStudio.UI/SandboxStudio.UI.csproj
-          -c Release
-          -r win-x64
-          --self-contained true
-          -p:PublishSingleFile=false
-          -o ./dist
+        shell: pwsh
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          $version = $env:VERSION_INPUT.Trim()
+          if ($version -ne '' -and $version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+            throw "Version '$version' is not a valid semver."
+          }
+          $versionArgs = @()
+          if ($version -ne '') { $versionArgs += "-p:Version=$version" }
+          dotnet publish src/SandboxStudio.UI/SandboxStudio.UI.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=false `
+            -o ./dist/SandboxStudio `
+            @versionArgs
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed." }
+          if ($version -eq '') {
+            $version = (dotnet msbuild src/SandboxStudio.UI/SandboxStudio.UI.csproj -getProperty:Version).Trim()
+          }
+          echo "ZIP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Strip Debug Artifacts
+        shell: pwsh
+        run: Get-ChildItem ./dist/SandboxStudio -Recurse -Include *.pdb, SandboxStudio.*.xml | Remove-Item -Force
 
       - name: Create Preview Archive
         shell: pwsh
-        run: Compress-Archive -Path ./dist/* -DestinationPath ./SandboxStudio-win-x64-preview.zip
+        run: Compress-Archive -Path ./dist/SandboxStudio -DestinationPath "./SandboxStudio-${{ env.ZIP_VERSION }}-win-x64.zip" -CompressionLevel Optimal
 
       - name: Upload Preview Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SandboxStudio-win-x64-preview
-          path: SandboxStudio-win-x64-preview.zip
+          name: SandboxStudio-${{ env.ZIP_VERSION }}-win-x64
+          path: SandboxStudio-${{ env.ZIP_VERSION }}-win-x64.zip
           if-no-files-found: error
           retention-days: 14
