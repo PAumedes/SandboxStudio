@@ -29,6 +29,8 @@ public interface IHostCapabilities
 
     /// <summary>
     /// Determines which configured settings a host policy will silently override at run time.
+    /// Settings left unset (<see langword="null"/>) are reported too whenever the feature
+    /// defaults to enabled on this host, since omitting the element requests the default.
     /// </summary>
     /// <param name="configuration">The profile configuration to evaluate.</param>
     /// <returns>One entry per setting whose requested behavior host policy disables.</returns>

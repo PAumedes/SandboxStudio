@@ -39,14 +39,14 @@
                 TextWrapping="Wrap"
                 MinHeight="72" />
 
-            <ComboBox Header="Networking" HorizontalAlignment="Stretch"
+            <ComboBox Header="Networking" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.Networking, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
                 <ComboBoxItem Content="Default" />
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
-            <ComboBox Header="vGPU" HorizontalAlignment="Stretch"
+            <ComboBox Header="vGPU" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VGpu, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
                 <ComboBoxItem Content="Default" />
@@ -61,14 +61,14 @@
                 Text="Enabling host devices, clipboard, or printers increases sharing with the host."
                 TextWrapping="Wrap" />
 
-            <ComboBox Header="Microphone input" HorizontalAlignment="Stretch"
+            <ComboBox Header="Microphone input" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.AudioInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
                 <ComboBoxItem Content="Default" />
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
-            <ComboBox Header="Camera input" HorizontalAlignment="Stretch"
+            <ComboBox Header="Camera input" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VideoInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
                 <ComboBoxItem Content="Default" />
@@ -82,14 +82,14 @@
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
-            <ComboBox Header="Clipboard sharing" HorizontalAlignment="Stretch"
+            <ComboBox Header="Clipboard sharing" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ClipboardRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
                 <ComboBoxItem Content="Default" />
                 <ComboBoxItem Content="Enable" />
                 <ComboBoxItem Content="Disable" />
             </ComboBox>
-            <ComboBox Header="Printer sharing" HorizontalAlignment="Stretch"
+            <ComboBox Header="Printer sharing" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.PrinterRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
                 <ComboBoxItem Content="Unspecified" />
                 <ComboBoxItem Content="Default" />

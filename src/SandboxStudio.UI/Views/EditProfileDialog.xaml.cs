@@ -32,6 +32,10 @@ public sealed partial class EditProfileDialog : ContentDialog
     /// <summary>
     /// Initializes a new instance of <see cref="EditProfileDialog"/>.
     /// </summary>
+    /// <remarks>
+    /// <see cref="EditProfileViewModel.SetProfile"/> must be called on <paramref name="viewModel"/>
+    /// before constructing the dialog so the draft is populated.
+    /// </remarks>
     public EditProfileDialog(EditProfileViewModel viewModel, IWsbValidator validator)
     {
         ViewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
@@ -40,20 +44,27 @@ public sealed partial class EditProfileDialog : ContentDialog
         InitializeComponent();
 
         var draft = ViewModel.Profile;
-        NameTextBox.Text = draft.Name;
-        DescriptionTextBox.Text = draft.Description;
+        NameTextBox.Text = draft.Name ?? string.Empty;
+        DescriptionTextBox.Text = draft.Description ?? string.Empty;
         MemoryTextBox.Text = draft.Configuration.MemoryInMB?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         StartupCommandTextBox.Text = draft.Configuration.LogonCommand?.Command ?? string.Empty;
 
+        RefreshPolicyOverrideInfoBar();
+        UpdateWritableMappingControls();
+    }
+
+    private void RefreshPolicyOverrideInfoBar()
+    {
         var policyOverrides = ViewModel.GetPolicyOverrides();
+        PolicyOverrideInfoBar.IsOpen = policyOverrides.Count > 0;
         if (policyOverrides.Count > 0)
         {
             PolicyOverrideInfoBar.Message = string.Join(" ", policyOverrides.Select(o => o.Message));
-            PolicyOverrideInfoBar.IsOpen = true;
         }
-
-        UpdateWritableMappingControls();
     }
+
+    private void OnTriStateSelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        RefreshPolicyOverrideInfoBar();
 
     private void UpdateWritableMappingControls()
     {
@@ -70,6 +81,7 @@ public sealed partial class EditProfileDialog : ContentDialog
         }
 
         UpdateWritableMappingControls();
+        RefreshPolicyOverrideInfoBar();
     }
 
     private void OnRemoveMappedFolderClicked(object sender, RoutedEventArgs e)
@@ -78,6 +90,7 @@ public sealed partial class EditProfileDialog : ContentDialog
         {
             ViewModel.RemoveMappedFolder(folder);
             UpdateWritableMappingControls();
+            RefreshPolicyOverrideInfoBar();
         }
     }
 
@@ -85,6 +98,7 @@ public sealed partial class EditProfileDialog : ContentDialog
     {
         ViewModel.AddMappedFolder();
         UpdateWritableMappingControls();
+        RefreshPolicyOverrideInfoBar();
     }
 
     private void ShowDialogError(string message)
@@ -154,11 +168,21 @@ public sealed partial class EditProfileDialog : ContentDialog
             var overrideMessages = ViewModel.GetPolicyOverrides()
                 .Select(policyOverride => policyOverride.Message)
                 .ToList();
-            var notes = warningMessages.Concat(overrideMessages).ToList();
+            var notes = new List<string>();
+            if (warningMessages.Count > 0)
+            {
+                notes.Add($"{warningMessages.Count} warning(s): {string.Join("; ", warningMessages)}");
+            }
+
+            if (overrideMessages.Count > 0)
+            {
+                notes.Add($"host policy overrides: {string.Join("; ", overrideMessages)}");
+            }
+
             SavedSuccessfully = true;
             PostSaveStatusMessage = notes.Count == 0
                 ? $"Saved '{draft.Name}'."
-                : $"Saved '{draft.Name}' with {notes.Count} warning(s): {string.Join("; ", notes)}";
+                : $"Saved '{draft.Name}' with {string.Join("; ", notes)}.";
         }
         catch (Exception ex)
         {

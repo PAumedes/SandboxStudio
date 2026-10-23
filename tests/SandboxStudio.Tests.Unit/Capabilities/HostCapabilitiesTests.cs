@@ -168,10 +168,31 @@ public sealed class HostCapabilitiesTests
     public void SandboxStatus_WhenEditionDoesNotSupportSandbox_ReturnsUnsupportedEdition(string editionId)
     {
         // Arrange
-        var sut = CreateSut(editionId: editionId, sandboxExecutableExists: true);
+        var sut = CreateSut(editionId: editionId, sandboxExecutableExists: false);
 
         // Act & Assert
         sut.SandboxStatus.Should().Be(HostSandboxStatus.UnsupportedEdition);
+    }
+
+    [Fact]
+    public void SandboxStatus_WhenExecutableExistsOnUnsupportedEdition_ExecutableWins()
+    {
+        // Arrange - exe presence is the ground truth; a misdetected edition must not
+        // report Sandbox as unusable when it is actually installed
+        var sut = CreateSut(editionId: "Core", sandboxExecutableExists: true);
+
+        // Act & Assert
+        sut.SandboxStatus.Should().Be(HostSandboxStatus.Available);
+    }
+
+    [Fact]
+    public void SandboxStatus_WhenEditionIsEmpty_FallsBackToExecutableProbe()
+    {
+        // Arrange
+        var sut = CreateSut(editionId: "", sandboxExecutableExists: false);
+
+        // Act & Assert
+        sut.SandboxStatus.Should().Be(HostSandboxStatus.NotInstalled);
     }
 
     [Theory]
@@ -379,5 +400,137 @@ public sealed class HostCapabilitiesTests
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenUnsetSettingDefaultsToEnabled_ReturnsOverride()
+    {
+        // Arrange - an omitted element behaves like "Default": networking is enabled
+        // by default, so a null value is still overridden by policy
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowNetworking"] = 0 });
+        var config = new WsbConfiguration();
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().ContainSingle(o =>
+            o.SettingName == nameof(WsbConfiguration.Networking) &&
+            o.Message.Contains("not set"));
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenUnsetSettingDefaultsToDisabled_ReturnsNoOverride()
+    {
+        // Arrange - video input defaults to disabled, so an omitted element changes nothing
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowVideoInput"] = 0 });
+        var config = new WsbConfiguration();
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenMultiplePoliciesBlock_ReturnsOneEntryPerSetting()
+    {
+        // Arrange
+        var sut = CreateSut(policyValues: new Dictionary<string, object?>
+        {
+            ["AllowNetworking"] = 0,
+            ["AllowClipboardRedirection"] = 0
+        });
+        var config = new WsbConfiguration
+        {
+            Networking = "Enable",
+            ClipboardRedirection = "Enable"
+        };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().HaveCount(2);
+        overrides.Should().Contain(o => o.PolicyValueName == "AllowNetworking");
+        overrides.Should().Contain(o => o.PolicyValueName == "AllowClipboardRedirection");
+    }
+
+    [Theory]
+    [InlineData("0")]        // REG_SZ is not REG_DWORD
+    [InlineData(0L)]         // REG_QWORD is not REG_DWORD
+    public void GetAvailability_WhenPolicyValueIsNotDword_TreatsAsNotBlocked(object policyValue)
+    {
+        // Arrange - only a DWORD 0 blocks; other registry kinds are not honored by policy
+        var sut = CreateSut(
+            osBuild: 26100,
+            policyValues: new Dictionary<string, object?> { ["AllowNetworking"] = policyValue });
+
+        // Act
+        var result = sut.GetAvailability(SandboxFeature.Networking);
+
+        // Assert
+        result.Status.Should().Be(FeatureStatus.Available);
+    }
+
+    [Theory]
+    [InlineData(19040, FeatureStatus.Available)]
+    [InlineData(19041, FeatureStatus.DisabledByPolicy)]
+    public void GetAvailability_EnforcesClassicPolicyFloorAt19041(int osBuild, FeatureStatus expected)
+    {
+        // Arrange - the six classic Sandbox policies take effect on Win10 2004 / Win11 21H2
+        var sut = CreateSut(
+            osBuild: osBuild,
+            policyValues: new Dictionary<string, object?> { ["AllowNetworking"] = 0 });
+
+        // Act
+        var result = sut.GetAvailability(SandboxFeature.Networking);
+
+        // Assert
+        result.Status.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(18341, FeatureStatus.RequiresNewerWindows)]
+    [InlineData(18342, FeatureStatus.Available)]
+    public void GetAvailability_ConfigurationFilesBoundaryAt18342(int osBuild, FeatureStatus expected)
+    {
+        // Arrange
+        var sut = CreateSut(osBuild: osBuild);
+
+        // Act
+        var result = sut.GetAvailability(SandboxFeature.ConfigurationFiles);
+
+        // Assert
+        result.Status.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(22630, FeatureStatus.RequiresNewerWindows)]
+    [InlineData(22631, FeatureStatus.Available)]
+    public void GetAvailability_EnvironmentVariablePathsBoundaryAt22631(int osBuild, FeatureStatus expected)
+    {
+        // Arrange
+        var sut = CreateSut(osBuild: osBuild);
+
+        // Act
+        var result = sut.GetAvailability(SandboxFeature.MappedFolderEnvironmentVariables);
+
+        // Assert
+        result.Status.Should().Be(expected);
+    }
+
+    [Fact]
+    public void GetAvailability_WhenFeatureIsUnknown_ThrowsArgumentOutOfRange()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        var act = () => sut.GetAvailability((SandboxFeature)999);
+
+        // Assert
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 }

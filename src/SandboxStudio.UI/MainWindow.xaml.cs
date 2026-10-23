@@ -39,6 +39,11 @@ public sealed partial class MainWindow : Window
             SandboxStatusInfoBar.Message = unavailableReason;
         }
 
+        if (ViewModel.SandboxUnavailableTitle is { } unavailableTitle)
+        {
+            SandboxStatusInfoBar.Title = unavailableTitle;
+        }
+
         SandboxEngineStatus.Text = ViewModel.SandboxStatusMessage ?? string.Empty;
 
         // Auto-load profiles on startup

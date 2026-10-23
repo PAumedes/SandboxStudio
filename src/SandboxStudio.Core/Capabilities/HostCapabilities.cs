@@ -78,21 +78,26 @@ public sealed class HostCapabilities : IHostCapabilities
     {
         get
         {
-            if (EditionId is not null && !IsSupportedEdition(EditionId))
+            // Executable presence is the ground truth; the edition check only
+            // explains why the feature may be missing.
+            if (_sandboxExecutableExists())
             {
-                return HostSandboxStatus.UnsupportedEdition;
+                return HostSandboxStatus.Available;
             }
 
-            return _sandboxExecutableExists()
-                ? HostSandboxStatus.Available
-                : HostSandboxStatus.NotInstalled;
+            return string.IsNullOrWhiteSpace(EditionId) || IsSupportedEdition(EditionId)
+                ? HostSandboxStatus.NotInstalled
+                : HostSandboxStatus.UnsupportedEdition;
         }
     }
 
     /// <inheritdoc/>
     public FeatureAvailability GetAvailability(SandboxFeature feature)
     {
-        var rule = Rules[feature];
+        if (!Rules.TryGetValue(feature, out var rule))
+        {
+            throw new ArgumentOutOfRangeException(nameof(feature), feature, "Unknown sandbox feature.");
+        }
 
         if (rule.RequiredBuild is { } requiredBuild && OsBuild < requiredBuild)
         {
@@ -103,7 +108,7 @@ public sealed class HostCapabilities : IHostCapabilities
         }
 
         if (rule.PolicyValueName is { } policyValueName &&
-            OsBuild >= rule.PolicyApplicableBuild!.Value &&
+            (rule.PolicyApplicableBuild is not { } applicableBuild || OsBuild >= applicableBuild) &&
             IsBlockedByPolicy(policyValueName))
         {
             return new FeatureAvailability(
@@ -128,13 +133,19 @@ public sealed class HostCapabilities : IHostCapabilities
         CheckTriState(configuration.PrinterRedirection, SandboxFeature.PrinterRedirection, nameof(configuration.PrinterRedirection), defaultEnabled: false);
         CheckTriState(configuration.ClipboardRedirection, SandboxFeature.ClipboardRedirection, nameof(configuration.ClipboardRedirection), defaultEnabled: true);
 
-        if (configuration.MappedFolders.Count > 0)
+        if (configuration.MappedFolders is { Count: > 0 })
         {
-            AddIfBlocked(SandboxFeature.MappedFolders, nameof(configuration.MappedFolders));
+            AddIfBlocked(
+                SandboxFeature.MappedFolders,
+                nameof(configuration.MappedFolders),
+                policy => $"{nameof(configuration.MappedFolders)} has no effect because host policy '{policy}' disables it.");
 
             if (configuration.MappedFolders.Any(folder => !folder.IsReadOnly))
             {
-                AddIfBlocked(SandboxFeature.WritableMappedFolders, "MappedFolders (writable)");
+                AddIfBlocked(
+                    SandboxFeature.WritableMappedFolders,
+                    nameof(configuration.MappedFolders),
+                    policy => $"Writable mapped folders have no effect because host policy '{policy}' disables write access.");
             }
         }
 
@@ -142,16 +153,21 @@ public sealed class HostCapabilities : IHostCapabilities
 
         void CheckTriState(string? configured, SandboxFeature feature, string settingName, bool defaultEnabled)
         {
-            // A policy block only overrides a request to enable the feature, whether
-            // explicit ("Enable") or through a default that enables it ("Default").
-            var requestsFeature = configured is "Enable" || (configured is "Default" && defaultEnabled);
-            if (requestsFeature)
+            // "Enable" requests the feature explicitly; an omitted element or "Default"
+            // requests it implicitly whenever the feature defaults to enabled on this host.
+            var requestsFeature = configured is "Enable" ||
+                ((configured is null or "Default") && defaultEnabled);
+            if (!requestsFeature)
             {
-                AddIfBlocked(feature, settingName, configured);
+                return;
             }
+
+            AddIfBlocked(feature, settingName, policy => configured is null
+                ? $"{settingName} is not set and defaults to enabled, but host policy '{policy}' disables it."
+                : $"{settingName} is set to '{configured}' but host policy '{policy}' disables it.");
         }
 
-        void AddIfBlocked(SandboxFeature feature, string settingName, string? configured = null)
+        void AddIfBlocked(SandboxFeature feature, string settingName, Func<string, string> detail)
         {
             if (GetAvailability(feature).Status != FeatureStatus.DisabledByPolicy)
             {
@@ -159,10 +175,7 @@ public sealed class HostCapabilities : IHostCapabilities
             }
 
             var policyName = Rules[feature].PolicyValueName!;
-            var detail = configured is null
-                ? $"{settingName} has no effect because host policy '{policyName}' disables it."
-                : $"{settingName} is set to '{configured}' but host policy '{policyName}' disables it.";
-            overrides.Add(new PolicyOverride(settingName, policyName, detail));
+            overrides.Add(new PolicyOverride(settingName, policyName, detail(policyName)));
         }
     }
 

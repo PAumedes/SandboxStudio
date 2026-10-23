@@ -60,6 +60,12 @@ public sealed partial class MainViewModel : ObservableObject
     public partial string? SandboxUnavailableReason { get; set; }
 
     /// <summary>
+    /// Gets or sets the InfoBar title shown when Windows Sandbox cannot be used, or null to keep the default.
+    /// </summary>
+    [ObservableProperty]
+    public partial string? SandboxUnavailableTitle { get; set; }
+
+    /// <summary>
     /// Initializes a new instance of <see cref="MainViewModel"/>.
     /// </summary>
     public MainViewModel(
@@ -84,6 +90,11 @@ public sealed partial class MainViewModel : ObservableObject
                 "Windows Sandbox requires a Pro, Enterprise, or Education edition of Windows.",
             HostSandboxStatus.NotInstalled =>
                 "Windows Sandbox is not enabled on this host. Profiles can be created, but launching them requires the Windows Sandbox optional feature.",
+            _ => null
+        };
+        SandboxUnavailableTitle = capabilities.SandboxStatus switch
+        {
+            HostSandboxStatus.UnsupportedEdition => "Windows Sandbox unsupported on this edition",
             _ => null
         };
     }
@@ -164,7 +175,7 @@ public sealed partial class MainViewModel : ObservableObject
             var overrides = _capabilities.GetPolicyOverrides(profile.Configuration);
             StatusMessage = overrides.Count == 0
                 ? $"'{profile.Name}' launched successfully."
-                : $"'{profile.Name}' launched; host policy overrides: {string.Join("; ", overrides.Select(o => o.SettingName))}.";
+                : $"'{profile.Name}' launched; host policy overrides: {string.Join("; ", overrides.Select(o => o.SettingName).Distinct())}.";
         }
         else
         {

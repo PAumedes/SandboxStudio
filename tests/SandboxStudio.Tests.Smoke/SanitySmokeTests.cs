@@ -57,6 +57,7 @@ public sealed class SanitySmokeTests : IDisposable
         services.AddSingleton<IWsbSerializer, WsbSerializer>();
         services.AddSingleton<IWsbValidator, WsbValidator>();
         services.AddSingleton<IProfileRepository>(_ => new JsonProfileRepository(_smokeTempDir));
+        services.AddSingleton<WsbExportService>();
         services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
         services.AddSingleton<IHostCapabilities, HostCapabilities>();
 
@@ -68,6 +69,7 @@ public sealed class SanitySmokeTests : IDisposable
         provider.GetRequiredService<IProfileRepository>().Should().NotBeNull();
         provider.GetRequiredService<ISandboxLauncher>().Should().NotBeNull();
         provider.GetRequiredService<IHostCapabilities>().Should().NotBeNull();
+        provider.GetRequiredService<WsbExportService>().Should().NotBeNull();
     }
 
     [Fact]
