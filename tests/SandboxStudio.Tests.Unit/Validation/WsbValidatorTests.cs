@@ -131,7 +131,7 @@ public sealed class WsbValidatorTests
     }
 
     [Fact]
-    public void Validate_WhenHostFolderIsNotRooted_ReturnsError()
+    public void Validate_WhenHostFolderIsNotFullyQualified_ReturnsError()
     {
         // Arrange
         var config = new WsbConfiguration
@@ -147,7 +147,98 @@ public sealed class WsbValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Messages.Should().Contain(m => m.Severity == ValidationSeverity.Error && m.Message.Contains("must be an absolute rooted path"));
+        result.Messages.Should().Contain(m => m.Severity == ValidationSeverity.Error && m.Message.Contains("must be a fully qualified absolute path"));
+    }
+
+    [Theory]
+    [InlineData(@"\AppData\SandboxStudio")]
+    [InlineData(@"C:SandboxStudio")]
+    public void Validate_WhenHostFolderIsRootedButNotFullyQualified_ReturnsError(string hostFolder)
+    {
+        var config = new WsbConfiguration
+        {
+            MappedFolders = new()
+            {
+                new WsbMappedFolder { HostFolder = hostFolder }
+            }
+        };
+
+        var result = _sut.Validate(config);
+
+        result.IsValid.Should().BeFalse();
+        result.Messages.Should().Contain(m =>
+            m.Severity == ValidationSeverity.Error &&
+            m.PropertyName == "MappedFolders[0].HostFolder" &&
+            m.Message.Contains("must be a fully qualified absolute path"));
+    }
+
+    [Theory]
+    [InlineData(@"\AppData\SandboxStudio")]
+    [InlineData(@"C:SandboxStudio")]
+    public void Validate_WhenSandboxFolderIsRootedButNotFullyQualified_ReturnsError(string sandboxFolder)
+    {
+        var config = new WsbConfiguration
+        {
+            MappedFolders = new()
+            {
+                new WsbMappedFolder
+                {
+                    HostFolder = Environment.SystemDirectory,
+                    SandboxFolder = sandboxFolder
+                }
+            }
+        };
+
+        var result = _sut.Validate(config);
+
+        result.IsValid.Should().BeFalse();
+        result.Messages.Should().Contain(m =>
+            m.Severity == ValidationSeverity.Error &&
+            m.PropertyName == "MappedFolders[0].SandboxFolder" &&
+            m.Message.Contains("must be a fully qualified absolute path"));
+    }
+
+    [Theory]
+    [InlineData(@"C:\Sandbox\Destination")]
+    [InlineData(@"\\server\share\Sandbox")]
+    public void Validate_WhenSandboxFolderIsFullyQualified_AcceptsDriveAndUncPaths(string sandboxFolder)
+    {
+        var config = new WsbConfiguration
+        {
+            MappedFolders = new()
+            {
+                new WsbMappedFolder
+                {
+                    HostFolder = Environment.SystemDirectory,
+                    SandboxFolder = sandboxFolder
+                }
+            }
+        };
+
+        var result = _sut.Validate(config);
+
+        result.IsValid.Should().BeTrue();
+        result.Messages.Should().NotContain(m => m.Severity == ValidationSeverity.Error);
+    }
+
+    [Fact]
+    public void Validate_WhenHostFolderDoesNotExist_ReturnsWarningWithoutError()
+    {
+        var missingHostFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "Missing");
+        var config = new WsbConfiguration
+        {
+            MappedFolders = new()
+            {
+                new WsbMappedFolder { HostFolder = missingHostFolder }
+            }
+        };
+
+        var result = _sut.Validate(config);
+
+        result.IsValid.Should().BeTrue();
+        result.Messages.Should().ContainSingle(m =>
+            m.Severity == ValidationSeverity.Warning &&
+            m.PropertyName == "MappedFolders[0].HostFolder");
     }
 
     [Fact]

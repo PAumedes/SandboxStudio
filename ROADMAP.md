@@ -11,7 +11,7 @@ Status: Implemented and locally build- and visually verified; native title-bar i
 
 ## Phase 2 - Profile editor and exports
 
-- Status: Partially implemented. The dashboard has a basic editor for name, description, networking, vGPU, and memory, plus validated `.wsb` export. Mapped-folder editing and remaining advanced controls are still planned.
+- Status: Partially implemented. The dashboard editor supports name, description, networking, vGPU, memory, and mapped host/sandbox folders; new mappings are read-only by default, and writable access requires acknowledgement before Save and confirmation before Launch. Validated `.wsb` export is wired. Remaining advanced controls are still planned.
 - Keep configuration behavior in testable core logic with focused automated tests.
 
 ## Phase 3 — Theme and localization

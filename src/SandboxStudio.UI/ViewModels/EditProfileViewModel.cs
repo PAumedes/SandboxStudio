@@ -66,7 +66,7 @@ public partial class EditProfileViewModel : ObservableObject
     {
         var newFolder = new WsbMappedFolder
         {
-            HostFolder = @"C:\",
+            HostFolder = string.Empty,
             IsReadOnly = true
         };
         MappedFolders.Add(newFolder);

@@ -51,16 +51,36 @@ public sealed partial class MainWindow : Window
 
     private async void OnLaunchClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: SandboxProfile profile })
+        if (sender is not Button { Tag: SandboxProfile profile })
         {
-            try
+            return;
+        }
+
+        try
+        {
+            if (profile.Configuration.MappedFolders.Any(folder => !folder.IsReadOnly))
             {
-                await ViewModel.LaunchProfileAsync(profile);
+                var dialog = new ContentDialog
+                {
+                    Title = "Writable host folder access",
+                    Content = "This profile allows Windows Sandbox to change files in mapped host folders. Continue only if you trust this configuration.",
+                    PrimaryButtonText = "Launch anyway",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = Content.XamlRoot
+                };
+
+                if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                {
+                    return;
+                }
             }
-            catch (Exception ex)
-            {
-                ViewModel.StatusMessage = $"Launch error: {ex.Message}";
-            }
+
+            await ViewModel.LaunchProfileAsync(profile);
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = $"Launch error: {ex.Message}";
         }
     }
 
@@ -113,10 +133,124 @@ public sealed partial class MainWindow : Window
             PlaceholderText = "Optional",
             Text = editViewModel.Profile.Configuration.MemoryInMB?.ToString(CultureInfo.InvariantCulture) ?? string.Empty
         };
+        var mappedFolderRows = new List<(
+            WsbMappedFolder Folder,
+            TextBox HostFolderTextBox,
+            TextBox SandboxFolderTextBox,
+            CheckBox ReadOnlyCheckBox,
+            StackPanel Container)>();
+        var mappedFoldersPanel = new StackPanel { Spacing = 12 };
+        var mappedFoldersWarning = new TextBlock
+        {
+            Text = "Mapped folders share host data with Windows Sandbox. Keep them read-only unless writable access is necessary.",
+            TextWrapping = TextWrapping.Wrap
+        };
+        var writableMappingWarning = new TextBlock
+        {
+            Text = "Writable mappings let the sandbox change host files.",
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed
+        };
+        var acknowledgeWritableMapping = new CheckBox
+        {
+            Content = "I understand writable mappings let the sandbox change host files.",
+            IsChecked = false,
+            Visibility = Visibility.Collapsed
+        };
+        var addMappedFolderButton = new Button { Content = "Add mapped folder" };
         var errorTextBlock = new TextBlock
         {
             TextWrapping = TextWrapping.Wrap,
             Visibility = Visibility.Collapsed
+        };
+
+        void UpdateWritableMappingControls()
+        {
+            var hasWritableMapping = mappedFolderRows.Any(row => row.ReadOnlyCheckBox.IsChecked != true);
+            writableMappingWarning.Visibility = hasWritableMapping ? Visibility.Visible : Visibility.Collapsed;
+            acknowledgeWritableMapping.Visibility = hasWritableMapping ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        void UpdateHostFolderWarning(TextBox hostFolderTextBox, TextBlock warningTextBlock)
+        {
+            var hostFolder = hostFolderTextBox.Text;
+            var isMissing = !string.IsNullOrWhiteSpace(hostFolder) &&
+                Path.IsPathFullyQualified(hostFolder) &&
+                !Directory.Exists(hostFolder);
+            warningTextBlock.Visibility = isMissing ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        void AddMappedFolderRow(WsbMappedFolder folder)
+        {
+            var hostFolderTextBox = new TextBox
+            {
+                Header = "Host folder",
+                Text = folder.HostFolder
+            };
+            var missingHostFolderWarning = new TextBlock
+            {
+                Text = "This host folder does not exist. Windows Sandbox may be unable to start.",
+                TextWrapping = TextWrapping.Wrap,
+                Visibility = Visibility.Collapsed
+            };
+            var sandboxFolderTextBox = new TextBox
+            {
+                Header = "Sandbox folder (optional)",
+                Text = folder.SandboxFolder ?? string.Empty
+            };
+            var readOnlyCheckBox = new CheckBox
+            {
+                Content = "Read-only",
+                IsChecked = folder.IsReadOnly
+            };
+            var removeButton = new Button { Content = "Remove" };
+            var folderContainer = new StackPanel { Spacing = 8 };
+            var folderOptions = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 12
+            };
+
+            folderContainer.Children.Add(hostFolderTextBox);
+            folderContainer.Children.Add(missingHostFolderWarning);
+            folderContainer.Children.Add(sandboxFolderTextBox);
+            folderOptions.Children.Add(readOnlyCheckBox);
+            folderOptions.Children.Add(removeButton);
+            folderContainer.Children.Add(folderOptions);
+            mappedFoldersPanel.Children.Add(folderContainer);
+
+            mappedFolderRows.Add((
+                folder,
+                hostFolderTextBox,
+                sandboxFolderTextBox,
+                readOnlyCheckBox,
+                folderContainer));
+
+            hostFolderTextBox.LostFocus += (_, _) =>
+                UpdateHostFolderWarning(hostFolderTextBox, missingHostFolderWarning);
+            readOnlyCheckBox.Checked += (_, _) => UpdateWritableMappingControls();
+            readOnlyCheckBox.Unchecked += (_, _) => UpdateWritableMappingControls();
+            removeButton.Click += (_, _) =>
+            {
+                editViewModel.RemoveMappedFolder(folder);
+                mappedFolderRows.RemoveAll(row => ReferenceEquals(row.Folder, folder));
+                mappedFoldersPanel.Children.Remove(folderContainer);
+                UpdateWritableMappingControls();
+            };
+
+            UpdateHostFolderWarning(hostFolderTextBox, missingHostFolderWarning);
+            UpdateWritableMappingControls();
+        }
+
+        foreach (var folder in editViewModel.MappedFolders)
+        {
+            AddMappedFolderRow(folder);
+        }
+
+        addMappedFolderButton.Click += (_, _) =>
+        {
+            editViewModel.AddMappedFolder();
+            AddMappedFolderRow(editViewModel.MappedFolders[editViewModel.MappedFolders.Count - 1]);
         };
 
         var dialogContent = new StackPanel { Spacing = 12 };
@@ -126,11 +260,24 @@ public sealed partial class MainWindow : Window
         dialogContent.Children.Add(networkingComboBox);
         dialogContent.Children.Add(vGpuComboBox);
         dialogContent.Children.Add(memoryTextBox);
+        dialogContent.Children.Add(new TextBlock { Text = "Mapped folders" });
+        dialogContent.Children.Add(mappedFoldersWarning);
+        dialogContent.Children.Add(mappedFoldersPanel);
+        dialogContent.Children.Add(addMappedFolderButton);
+        dialogContent.Children.Add(writableMappingWarning);
+        dialogContent.Children.Add(acknowledgeWritableMapping);
+
+        var dialogScrollViewer = new ScrollViewer
+        {
+            Content = dialogContent,
+            MaxHeight = 480,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
 
         var dialog = new ContentDialog
         {
             Title = "Edit profile",
-            Content = dialogContent,
+            Content = dialogScrollViewer,
             PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
@@ -169,6 +316,25 @@ public sealed partial class MainWindow : Window
                 draft.Configuration.Networking = GetTriStateValue(networkingComboBox);
                 draft.Configuration.VGpu = GetTriStateValue(vGpuComboBox);
                 draft.Configuration.MemoryInMB = memoryInMb;
+                foreach (var row in mappedFolderRows)
+                {
+                    row.Folder.HostFolder = row.HostFolderTextBox.Text;
+                    var sandboxFolder = row.SandboxFolderTextBox.Text;
+                    row.Folder.SandboxFolder = string.IsNullOrWhiteSpace(sandboxFolder) ? null : sandboxFolder;
+                    row.Folder.IsReadOnly = row.ReadOnlyCheckBox.IsChecked == true;
+                }
+
+                if (mappedFolderRows.Any(row => row.ReadOnlyCheckBox.IsChecked != true) &&
+                    acknowledgeWritableMapping.IsChecked != true)
+                {
+                    ShowDialogError("Acknowledge that writable mappings let the sandbox change host files before saving.");
+                    args.Cancel = true;
+                    return;
+                }
+
+                var validationResult = App.Host.Services
+                    .GetRequiredService<IWsbValidator>()
+                    .Validate(draft.Configuration);
 
                 if (!await editViewModel.SaveAsync())
                 {
@@ -178,6 +344,13 @@ public sealed partial class MainWindow : Window
                 }
 
                 await ViewModel.LoadProfilesAsync();
+                var warningMessages = validationResult.Messages
+                    .Where(message => message.Severity == ValidationSeverity.Warning)
+                    .Select(message => $"{message.PropertyName}: {message.Message}")
+                    .ToList();
+                ViewModel.StatusMessage = warningMessages.Count == 0
+                    ? $"Saved '{draft.Name}'."
+                    : $"Saved '{draft.Name}' with {warningMessages.Count} warning(s): {string.Join("; ", warningMessages)}";
             }
             catch (Exception ex)
             {
@@ -194,6 +367,8 @@ public sealed partial class MainWindow : Window
         {
             errorTextBlock.Text = message;
             errorTextBlock.Visibility = Visibility.Visible;
+            dialogScrollViewer.UpdateLayout();
+            dialogScrollViewer.ChangeView(null, 0, null, disableAnimation: true);
         }
 
         await dialog.ShowAsync();

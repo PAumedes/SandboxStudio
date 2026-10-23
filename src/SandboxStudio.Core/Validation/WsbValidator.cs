@@ -105,9 +105,9 @@ public sealed class WsbValidator : IWsbValidator
                 {
                     result.AddError($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' contains invalid path characters.");
                 }
-                else if (!Path.IsPathRooted(folder.HostFolder))
+                else if (!Path.IsPathFullyQualified(folder.HostFolder))
                 {
-                    result.AddError($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' must be an absolute rooted path.");
+                    result.AddError($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' must be a fully qualified absolute path.");
                 }
                 else if (!seenHostFolders.Add(folder.HostFolder))
                 {
@@ -125,6 +125,10 @@ public sealed class WsbValidator : IWsbValidator
                 if (folder.SandboxFolder.IndexOfAny(invalidChars) >= 0 || folder.SandboxFolder.IndexOfAny(WildcardChars) >= 0)
                 {
                     result.AddError($"{prefix}.SandboxFolder", $"SandboxFolder path '{folder.SandboxFolder}' contains invalid path characters.");
+                }
+                else if (!Path.IsPathFullyQualified(folder.SandboxFolder))
+                {
+                    result.AddError($"{prefix}.SandboxFolder", $"SandboxFolder path '{folder.SandboxFolder}' must be a fully qualified absolute path.");
                 }
                 else if (!seenSandboxFolders.Add(folder.SandboxFolder))
                 {
