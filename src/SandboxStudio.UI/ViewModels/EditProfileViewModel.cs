@@ -47,9 +47,11 @@ public partial class EditProfileViewModel : ObservableObject
     /// </summary>
     public void SetProfile(SandboxProfile profile)
     {
-        Profile = profile;
+        ArgumentNullException.ThrowIfNull(profile);
+
+        Profile = SandboxProfileCopy.Clone(profile);
         MappedFolders.Clear();
-        foreach (var folder in profile.Configuration.MappedFolders)
+        foreach (var folder in Profile.Configuration.MappedFolders)
         {
             MappedFolders.Add(folder);
         }
@@ -113,6 +115,29 @@ public partial class EditProfileViewModel : ObservableObject
     [RelayCommand]
     public async Task<bool> SaveAsync()
     {
+        var name = Profile.Name.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            HasErrors = true;
+            ValidationSummary = "A profile name is required.";
+            return false;
+        }
+
+        if (name.Length > 120)
+        {
+            HasErrors = true;
+            ValidationSummary = "A profile name cannot exceed 120 characters.";
+            return false;
+        }
+
+        if (Profile.Description.Length > 500)
+        {
+            HasErrors = true;
+            ValidationSummary = "A profile description cannot exceed 500 characters.";
+            return false;
+        }
+
+        Profile.Name = name;
         Validate();
         if (HasErrors)
         {

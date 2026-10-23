@@ -27,9 +27,10 @@ SandboxStudio is a .NET 10 and WinUI 3 source project for managing Windows Sandb
 ### Dashboard
 
 - Displays saved profiles and supports refresh, creation of a basic profile, deletion with confirmation, and a launch action.
-- The profile editor view, `.wsb` export UI, profile duplication, and tag management are not wired into the dashboard. An `EditProfileViewModel` exists, but there is no connected editor screen.
+- The card menu's **Edit Profile** dialog edits a profile's name, description, networking, vGPU, and memory. It validates changes and provides Save and Cancel; Cancel discards the draft.
+- Advanced configuration options, mapped-folder editing, `.wsb` export UI, profile duplication, and tag management are not wired into the dashboard.
 
-Windows Sandbox availability is checked on the host, but Windows Sandbox launching and packaged-app runtime behavior have not been verified. The workflow below produces a packaging preview only; it does not publish a GitHub release.
+The dashboard has been opened locally and displayed all three presets. Windows Sandbox launching and packaged-app runtime behavior have not been verified. The workflow below produces a packaging preview only; it does not publish a GitHub release.
 
 ## Architecture
 
@@ -50,8 +51,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full design documentation.
 ## Windows prerequisites
 
 - A Windows 10 or Windows 11 x64 development machine.
-- The [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
-- Visual Studio with .NET 10 and WinUI/Windows App SDK support, plus the Windows 10 SDK (10.0.19041.0) for the `net10.0-windows10.0.19041.0` target.
+- The [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and Visual Studio Build Tools 2022 with the Windows App SDK/WinUI build dependencies and Windows 10 SDK (10.0.19041.0).
+- On this machine, .NET SDK 10.0.402 is installed per-user at `C:\Users\patri\.dotnet`; the system-wide `dotnet` installation has only the .NET 8 runtime. Visual Studio Build Tools 2022 is installed, but the full Visual Studio IDE is not.
+- The full Visual Studio IDE is optional for command-line builds. The IDE and WinUI support are required only for the Visual Studio **F5** debugging route.
 - To launch Windows Sandbox, use a Windows edition that supports the feature (such as Pro, Enterprise, or Education), enable Windows Sandbox, and enable hardware virtualization. The optional feature can be enabled from an elevated PowerShell session:
 
   ```powershell
@@ -60,14 +62,36 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full design documentation.
 
 ## Build and test
 
-From PowerShell in the repository root:
+From one PowerShell session in the repository root, first select the per-user SDK when it exists. If it is absent, the commands use `dotnet` on `PATH`:
+
+```powershell
+$localDotnet = Join-Path $HOME '.dotnet'
+if (Test-Path (Join-Path $localDotnet 'dotnet.exe')) {
+    $env:DOTNET_ROOT = $localDotnet
+    $env:PATH = "$localDotnet;$env:PATH"
+}
+```
+
+The Release build restores NuGet dependencies. Run the build and tests in the same session:
 
 ```powershell
 dotnet build SandboxStudio.sln -c Release
 dotnet test SandboxStudio.sln -c Release --no-build
 ```
 
-The build restores NuGet dependencies. To run the app under the Visual Studio debugger, open `SandboxStudio.sln`, set `SandboxStudio.UI` as the startup project, select the `Debug` configuration and `x64` platform, then press **F5**. Running the dashboard does not by itself verify that Windows Sandbox can launch on the host.
+To build and open the Debug x64 dashboard in that same session:
+
+```powershell
+dotnet build .\SandboxStudio.sln -c Debug -p:Platform=x64
+if ($LASTEXITCODE -ne 0) {
+    throw "Debug x64 build failed with exit code $LASTEXITCODE."
+}
+
+$debugOutput = Join-Path $PWD 'src\SandboxStudio.UI\bin\x64\Debug\net10.0-windows10.0.19041.0'
+Start-Process -FilePath (Join-Path $debugOutput 'SandboxStudio.UI.exe') -WorkingDirectory $debugOutput
+```
+
+The dashboard opens without Windows Sandbox enabled. Do not click a profile's **Launch** button unless you intend to start a Windows Sandbox VM. **New Profile** saves its JSON file under `%LOCALAPPDATA%\SandboxStudio\Profiles`. If the full Visual Studio IDE is installed, the alternative F5 route is to open `SandboxStudio.sln`, set `SandboxStudio.UI` as the startup project, select the `Debug` configuration and `x64` platform, then press **F5**.
 
 The **Package Preview** GitHub Actions workflow is manually triggered and uploads a `win-x64` zip artifact. It does not create a release.
 
