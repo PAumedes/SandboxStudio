@@ -10,23 +10,38 @@ namespace SandboxStudio.UI.ViewModels;
 /// <summary>
 /// ViewModel governing the main dashboard, profile cards, and quick actions.
 /// </summary>
-public partial class MainViewModel : ObservableObject
+public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IProfileRepository _repository;
     private readonly ISandboxLauncher _launcher;
 
+    /// <summary>
+    /// Gets or sets the profiles displayed on the dashboard.
+    /// </summary>
     [ObservableProperty]
     public partial ObservableCollection<SandboxProfile> Profiles { get; set; } = new();
 
+    /// <summary>
+    /// Gets or sets the currently selected profile.
+    /// </summary>
     [ObservableProperty]
     public partial SandboxProfile? SelectedProfile { get; set; }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether profiles are being loaded.
+    /// </summary>
     [ObservableProperty]
     public partial bool IsLoading { get; set; }
 
+    /// <summary>
+    /// Gets or sets the status-bar message shown to the user.
+    /// </summary>
     [ObservableProperty]
     public partial string? StatusMessage { get; set; }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether Windows Sandbox is available on this host.
+    /// </summary>
     [ObservableProperty]
     public partial bool IsSandboxInstalled { get; set; }
 

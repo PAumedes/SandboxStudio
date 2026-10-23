@@ -12,7 +12,7 @@ namespace SandboxStudio.UI;
 /// <summary>
 /// Provides application-specific behavior to supplement the default Application class.
 /// </summary>
-public partial class App : Application
+public sealed partial class App : Application
 {
     private Window? _mainWindow;
 
@@ -54,6 +54,7 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         _mainWindow = Host.Services.GetRequiredService<MainWindow>();
+        _mainWindow.Closed += (_, _) => Host.Dispose();
         _mainWindow.Activate();
     }
 }

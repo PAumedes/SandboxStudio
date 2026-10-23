@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SandboxStudio.Core.Models;
-using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Storage;
 using SandboxStudio.Core.Validation;
 
@@ -11,21 +10,32 @@ namespace SandboxStudio.UI.ViewModels;
 /// <summary>
 /// ViewModel controlling the creation and detailed editing of a Sandbox profile.
 /// </summary>
-public partial class EditProfileViewModel : ObservableObject
+public sealed partial class EditProfileViewModel : ObservableObject
 {
     private readonly IProfileRepository _repository;
     private readonly IWsbValidator _validator;
-    private readonly IWsbSerializer _serializer;
 
+    /// <summary>
+    /// Gets or sets the draft profile being edited.
+    /// </summary>
     [ObservableProperty]
     public partial SandboxProfile Profile { get; set; } = new();
 
+    /// <summary>
+    /// Gets or sets the editable collection of mapped folders.
+    /// </summary>
     [ObservableProperty]
     public partial ObservableCollection<WsbMappedFolder> MappedFolders { get; set; } = new();
 
+    /// <summary>
+    /// Gets or sets the aggregated validation summary displayed to the user.
+    /// </summary>
     [ObservableProperty]
     public partial string? ValidationSummary { get; set; }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether the current draft has validation errors.
+    /// </summary>
     [ObservableProperty]
     public partial bool HasErrors { get; set; }
 
@@ -34,12 +44,10 @@ public partial class EditProfileViewModel : ObservableObject
     /// </summary>
     public EditProfileViewModel(
         IProfileRepository repository,
-        IWsbValidator validator,
-        IWsbSerializer serializer)
+        IWsbValidator validator)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
-        _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
     }
 
     /// <summary>
@@ -101,7 +109,9 @@ public partial class EditProfileViewModel : ObservableObject
 
         if (HasErrors)
         {
-            ValidationSummary = string.Join("; ", result.Messages.Select(m => $"{m.PropertyName}: {m.Message}"));
+            ValidationSummary = string.Join("; ", result.Messages
+                .Where(m => m.Severity == ValidationSeverity.Error)
+                .Select(m => $"{m.PropertyName}: {m.Message}"));
         }
         else
         {
@@ -115,7 +125,7 @@ public partial class EditProfileViewModel : ObservableObject
     [RelayCommand]
     public async Task<bool> SaveAsync()
     {
-        var name = Profile.Name.Trim();
+        var name = Profile.Name?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(name))
         {
             HasErrors = true;
@@ -130,7 +140,7 @@ public partial class EditProfileViewModel : ObservableObject
             return false;
         }
 
-        if (Profile.Description.Length > 500)
+        if ((Profile.Description?.Length ?? 0) > 500)
         {
             HasErrors = true;
             ValidationSummary = "A profile description cannot exceed 500 characters.";
@@ -147,9 +157,4 @@ public partial class EditProfileViewModel : ObservableObject
         await _repository.SaveAsync(Profile);
         return true;
     }
-
-    /// <summary>
-    /// Exports the configuration as raw .wsb XML string.
-    /// </summary>
-    public string ExportXml() => _serializer.Serialize(Profile.Configuration);
 }

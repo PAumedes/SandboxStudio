@@ -1,0 +1,144 @@
+<ContentDialog
+    x:Class="SandboxStudio.UI.Views.EditProfileDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="using:SandboxStudio.UI.Converters"
+    xmlns:models="using:SandboxStudio.Core.Models"
+    Title="Edit profile"
+    PrimaryButtonText="Save"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    PrimaryButtonClick="OnPrimaryButtonClick">
+
+    <ContentDialog.Resources>
+        <conv:TriStateIndexConverter x:Key="TriStateIndex" />
+        <conv:MissingHostFolderVisibilityConverter x:Key="MissingHostFolderVisibility" />
+    </ContentDialog.Resources>
+
+    <ScrollViewer x:Name="DialogScrollViewer" MaxHeight="480" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12">
+            <TextBlock
+                x:Name="ErrorTextBlock"
+                TextWrapping="Wrap"
+                Visibility="Collapsed"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+
+            <TextBox x:Name="NameTextBox" Header="Name" MaxLength="120" />
+            <TextBox
+                x:Name="DescriptionTextBox"
+                Header="Description"
+                MaxLength="500"
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                MinHeight="72" />
+
+            <ComboBox Header="Networking" HorizontalAlignment="Stretch"
+                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.Networking, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                <ComboBoxItem Content="Unspecified" />
+                <ComboBoxItem Content="Default" />
+                <ComboBoxItem Content="Enable" />
+                <ComboBoxItem Content="Disable" />
+            </ComboBox>
+            <ComboBox Header="vGPU" HorizontalAlignment="Stretch"
+                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VGpu, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                <ComboBoxItem Content="Unspecified" />
+                <ComboBoxItem Content="Default" />
+                <ComboBoxItem Content="Enable" />
+                <ComboBoxItem Content="Disable" />
+            </ComboBox>
+
+            <TextBox x:Name="MemoryTextBox" Header="Memory (MB)" PlaceholderText="Optional" />
+
+            <TextBlock Text="Devices and security" />
+            <TextBlock
+                Text="Enabling host devices, clipboard, or printers increases sharing with the host."
+                TextWrapping="Wrap" />
+
+            <ComboBox Header="Microphone input" HorizontalAlignment="Stretch"
+                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.AudioInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                <ComboBoxItem Content="Unspecified" />
+                <ComboBoxItem Content="Default" />
+                <ComboBoxItem Content="Enable" />
+                <ComboBoxItem Content="Disable" />
+            </ComboBox>
+            <ComboBox Header="Camera input" HorizontalAlignment="Stretch"
+                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VideoInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                <ComboBoxItem Content="Unspecified" />
+                <ComboBoxItem Content="Default" />
+                <ComboBoxItem Content="Enable" />
+                <ComboBoxItem Content="Disable" />
+            </ComboBox>
+            <ComboBox Header="Protected client" HorizontalAlignment="Stretch"
+                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ProtectedClient, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                <ComboBoxItem Content="Unspecified" />
+                <ComboBoxItem Content="Default" />
+                <ComboBoxItem Content="Enable" />
+                <ComboBoxItem Content="Disable" />
+            </ComboBox>
+            <ComboBox Header="Clipboard sharing" HorizontalAlignment="Stretch"
+                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ClipboardRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                <ComboBoxItem Content="Unspecified" />
+                <ComboBoxItem Content="Default" />
+                <ComboBoxItem Content="Enable" />
+                <ComboBoxItem Content="Disable" />
+            </ComboBox>
+            <ComboBox Header="Printer sharing" HorizontalAlignment="Stretch"
+                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.PrinterRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                <ComboBoxItem Content="Unspecified" />
+                <ComboBoxItem Content="Default" />
+                <ComboBoxItem Content="Enable" />
+                <ComboBoxItem Content="Disable" />
+            </ComboBox>
+
+            <TextBox
+                x:Name="StartupCommandTextBox"
+                Header="Startup command (runs inside the sandbox at logon)"
+                PlaceholderText="Optional" />
+
+            <TextBlock Text="Mapped folders" />
+            <TextBlock
+                Text="Mapped folders share host data with Windows Sandbox. Keep them read-only unless writable access is necessary."
+                TextWrapping="Wrap" />
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.MappedFolders, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:WsbMappedFolder">
+                        <StackPanel Spacing="8" Margin="0,0,0,12">
+                            <TextBox
+                                x:Name="HostFolderTextBox"
+                                Header="Host folder"
+                                Text="{x:Bind HostFolder, Mode=TwoWay}" />
+                            <TextBlock
+                                Text="This host folder does not exist. Windows Sandbox may be unable to start."
+                                TextWrapping="Wrap"
+                                Visibility="{Binding ElementName=HostFolderTextBox, Path=Text, Mode=OneWay, Converter={StaticResource MissingHostFolderVisibility}}" />
+                            <TextBox
+                                Header="Sandbox folder (optional)"
+                                Text="{x:Bind SandboxFolder, Mode=TwoWay}" />
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <CheckBox
+                                    Content="Read-only"
+                                    IsChecked="{Binding IsReadOnly, Mode=TwoWay}"
+                                    Checked="OnReadOnlyStateChanged"
+                                    Unchecked="OnReadOnlyStateChanged" />
+                                <Button Content="Remove" Click="OnRemoveMappedFolderClicked" />
+                            </StackPanel>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Button Content="Add mapped folder" Click="OnAddMappedFolderClicked" />
+
+            <TextBlock
+                x:Name="WritableMappingWarning"
+                Text="Writable mappings let the sandbox change host files."
+                TextWrapping="Wrap"
+                Visibility="Collapsed" />
+            <CheckBox
+                x:Name="AcknowledgeWritableMapping"
+                Content="I understand writable mappings let the sandbox change host files."
+                Visibility="Collapsed" />
+        </StackPanel>
+    </ScrollViewer>
+</ContentDialog>
