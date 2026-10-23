@@ -15,6 +15,7 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IProfileRepository _repository;
     private readonly ISandboxLauncher _launcher;
+    private readonly IHostCapabilities _capabilities;
 
     /// <summary>
     /// Gets or sets the profiles displayed on the dashboard.
@@ -68,7 +69,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _launcher = launcher ?? throw new ArgumentNullException(nameof(launcher));
-        ArgumentNullException.ThrowIfNull(capabilities);
+        _capabilities = capabilities ?? throw new ArgumentNullException(nameof(capabilities));
 
         IsSandboxInstalled = capabilities.SandboxStatus == HostSandboxStatus.Available;
         SandboxStatusMessage = capabilities.SandboxStatus switch
@@ -160,7 +161,10 @@ public sealed partial class MainViewModel : ObservableObject
         var result = await _launcher.LaunchProfileAsync(profile);
         if (result.IsSuccess)
         {
-            StatusMessage = $"'{profile.Name}' launched successfully.";
+            var overrides = _capabilities.GetPolicyOverrides(profile.Configuration);
+            StatusMessage = overrides.Count == 0
+                ? $"'{profile.Name}' launched successfully."
+                : $"'{profile.Name}' launched; host policy overrides: {string.Join("; ", overrides.Select(o => o.SettingName))}.";
         }
         else
         {

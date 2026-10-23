@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Storage;
 using SandboxStudio.Core.Validation;
@@ -14,6 +15,7 @@ public sealed partial class EditProfileViewModel : ObservableObject
 {
     private readonly IProfileRepository _repository;
     private readonly IWsbValidator _validator;
+    private readonly IHostCapabilities _capabilities;
 
     /// <summary>
     /// Gets or sets the draft profile being edited.
@@ -44,11 +46,19 @@ public sealed partial class EditProfileViewModel : ObservableObject
     /// </summary>
     public EditProfileViewModel(
         IProfileRepository repository,
-        IWsbValidator validator)
+        IWsbValidator validator,
+        IHostCapabilities capabilities)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+        _capabilities = capabilities ?? throw new ArgumentNullException(nameof(capabilities));
     }
+
+    /// <summary>
+    /// Returns the settings in the current draft that a host policy will override.
+    /// </summary>
+    public IReadOnlyList<PolicyOverride> GetPolicyOverrides() =>
+        _capabilities.GetPolicyOverrides(Profile.Configuration);
 
     /// <summary>
     /// Sets the active profile for editing and populates observable fields.

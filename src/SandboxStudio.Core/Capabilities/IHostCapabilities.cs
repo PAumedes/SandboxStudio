@@ -1,3 +1,5 @@
+using SandboxStudio.Core.Models;
+
 namespace SandboxStudio.Core.Capabilities;
 
 /// <summary>
@@ -24,4 +26,11 @@ public interface IHostCapabilities
     /// </summary>
     /// <param name="feature">The capability to evaluate.</param>
     FeatureAvailability GetAvailability(SandboxFeature feature);
+
+    /// <summary>
+    /// Determines which configured settings a host policy will silently override at run time.
+    /// </summary>
+    /// <param name="configuration">The profile configuration to evaluate.</param>
+    /// <returns>One entry per setting whose requested behavior host policy disables.</returns>
+    IReadOnlyList<PolicyOverride> GetPolicyOverrides(WsbConfiguration configuration);
 }

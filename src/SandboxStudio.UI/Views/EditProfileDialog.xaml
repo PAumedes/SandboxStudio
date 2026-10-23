@@ -23,6 +23,13 @@
                 Visibility="Collapsed"
                 Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
 
+            <InfoBar
+                x:Name="PolicyOverrideInfoBar"
+                Severity="Warning"
+                IsOpen="False"
+                IsClosable="False"
+                Title="Host policy will override settings" />
+
             <TextBox x:Name="NameTextBox" Header="Name" MaxLength="120" />
             <TextBox
                 x:Name="DescriptionTextBox"

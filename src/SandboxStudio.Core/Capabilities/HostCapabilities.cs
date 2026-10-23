@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Security;
 using Microsoft.Win32;
+using SandboxStudio.Core.Models;
 
 namespace SandboxStudio.Core.Capabilities;
 
@@ -111,6 +112,58 @@ public sealed class HostCapabilities : IHostCapabilities
         }
 
         return new FeatureAvailability(FeatureStatus.Available);
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<PolicyOverride> GetPolicyOverrides(WsbConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var overrides = new List<PolicyOverride>();
+
+        CheckTriState(configuration.Networking, SandboxFeature.Networking, nameof(configuration.Networking), defaultEnabled: true);
+        CheckTriState(configuration.VGpu, SandboxFeature.VGpu, nameof(configuration.VGpu), defaultEnabled: !IsArm64);
+        CheckTriState(configuration.AudioInput, SandboxFeature.AudioInput, nameof(configuration.AudioInput), defaultEnabled: true);
+        CheckTriState(configuration.VideoInput, SandboxFeature.VideoInput, nameof(configuration.VideoInput), defaultEnabled: false);
+        CheckTriState(configuration.PrinterRedirection, SandboxFeature.PrinterRedirection, nameof(configuration.PrinterRedirection), defaultEnabled: false);
+        CheckTriState(configuration.ClipboardRedirection, SandboxFeature.ClipboardRedirection, nameof(configuration.ClipboardRedirection), defaultEnabled: true);
+
+        if (configuration.MappedFolders.Count > 0)
+        {
+            AddIfBlocked(SandboxFeature.MappedFolders, nameof(configuration.MappedFolders));
+
+            if (configuration.MappedFolders.Any(folder => !folder.IsReadOnly))
+            {
+                AddIfBlocked(SandboxFeature.WritableMappedFolders, "MappedFolders (writable)");
+            }
+        }
+
+        return overrides;
+
+        void CheckTriState(string? configured, SandboxFeature feature, string settingName, bool defaultEnabled)
+        {
+            // A policy block only overrides a request to enable the feature, whether
+            // explicit ("Enable") or through a default that enables it ("Default").
+            var requestsFeature = configured is "Enable" || (configured is "Default" && defaultEnabled);
+            if (requestsFeature)
+            {
+                AddIfBlocked(feature, settingName, configured);
+            }
+        }
+
+        void AddIfBlocked(SandboxFeature feature, string settingName, string? configured = null)
+        {
+            if (GetAvailability(feature).Status != FeatureStatus.DisabledByPolicy)
+            {
+                return;
+            }
+
+            var policyName = Rules[feature].PolicyValueName!;
+            var detail = configured is null
+                ? $"{settingName} has no effect because host policy '{policyName}' disables it."
+                : $"{settingName} is set to '{configured}' but host policy '{policyName}' disables it.";
+            overrides.Add(new PolicyOverride(settingName, policyName, detail));
+        }
     }
 
     private static bool IsSupportedEdition(string editionId) =>

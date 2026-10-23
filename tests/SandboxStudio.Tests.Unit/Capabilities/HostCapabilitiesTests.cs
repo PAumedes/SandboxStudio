@@ -1,5 +1,6 @@
 using FluentAssertions;
 using SandboxStudio.Core.Capabilities;
+using SandboxStudio.Core.Models;
 using Xunit;
 
 namespace SandboxStudio.Tests.Unit.Capabilities;
@@ -207,5 +208,176 @@ public sealed class HostCapabilitiesTests
 
         // Act & Assert
         sut.SandboxStatus.Should().Be(HostSandboxStatus.Available);
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenEnabledSettingIsBlocked_ReturnsOverride()
+    {
+        // Arrange
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowNetworking"] = 0 });
+        var config = new WsbConfiguration { Networking = "Enable" };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        var policyOverride = overrides.Should().ContainSingle().Which;
+        policyOverride.SettingName.Should().Be(nameof(WsbConfiguration.Networking));
+        policyOverride.PolicyValueName.Should().Be("AllowNetworking");
+        policyOverride.Message.Should().Contain("Enable").And.Contain("AllowNetworking");
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenDisabledSettingIsBlocked_ReturnsNoOverride()
+    {
+        // Arrange - a blocked feature stays blocked; "Disable" is not overridden
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowNetworking"] = 0 });
+        var config = new WsbConfiguration { Networking = "Disable" };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenDefaultWouldEnableABlockedFeature_ReturnsOverride()
+    {
+        // Arrange - networking is enabled by default, so "Default" is still overridden
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowNetworking"] = 0 });
+        var config = new WsbConfiguration { Networking = "Default" };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().ContainSingle(o => o.SettingName == nameof(WsbConfiguration.Networking));
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenDefaultWouldDisableABlockedFeature_ReturnsNoOverride()
+    {
+        // Arrange - video input is disabled by default, so "Default" changes nothing
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowVideoInput"] = 0 });
+        var config = new WsbConfiguration { VideoInput = "Default" };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_VGpuDefaultOnArm64_IsNotOverriddenByPolicy()
+    {
+        // Arrange - vGPU defaults to disabled on Arm64, so "Default" changes nothing
+        var sut = CreateSut(
+            isArm64: true,
+            policyValues: new Dictionary<string, object?> { ["AllowVGPU"] = 0 });
+        var config = new WsbConfiguration { VGpu = "Default" };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_VGpuDefaultOnX64_IsOverriddenByPolicy()
+    {
+        // Arrange - vGPU defaults to enabled on non-Arm64 devices
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowVGPU"] = 0 });
+        var config = new WsbConfiguration { VGpu = "Default" };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().ContainSingle(o => o.SettingName == nameof(WsbConfiguration.VGpu));
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenMappedFoldersAreBlocked_ReturnsOverride()
+    {
+        // Arrange
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowMappedFolders"] = 0 });
+        var config = new WsbConfiguration
+        {
+            MappedFolders = { new WsbMappedFolder { HostFolder = @"C:\Share", IsReadOnly = true } }
+        };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().ContainSingle(o => o.SettingName == nameof(WsbConfiguration.MappedFolders));
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenOnlyWritesAreBlocked_ReadOnlyMappingsAreNotOverridden()
+    {
+        // Arrange
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowWriteToMappedFolders"] = 0 });
+        var config = new WsbConfiguration
+        {
+            MappedFolders = { new WsbMappedFolder { HostFolder = @"C:\Share", IsReadOnly = true } }
+        };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenWritesAreBlocked_WritableMappingsAreOverridden()
+    {
+        // Arrange
+        var sut = CreateSut(policyValues: new Dictionary<string, object?> { ["AllowWriteToMappedFolders"] = 0 });
+        var config = new WsbConfiguration
+        {
+            MappedFolders = { new WsbMappedFolder { HostFolder = @"C:\Share", IsReadOnly = false } }
+        };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().ContainSingle(o => o.PolicyValueName == "AllowWriteToMappedFolders");
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenNothingIsBlocked_ReturnsEmpty()
+    {
+        // Arrange
+        var sut = CreateSut(policyValues: new Dictionary<string, object?>());
+        var config = new WsbConfiguration
+        {
+            Networking = "Enable",
+            MemoryInMB = 4096
+        };
+
+        // Act
+        var overrides = sut.GetPolicyOverrides(config);
+
+        // Assert
+        overrides.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void GetPolicyOverrides_WhenConfigurationIsNull_Throws()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        var act = () => sut.GetPolicyOverrides(null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
     }
 }

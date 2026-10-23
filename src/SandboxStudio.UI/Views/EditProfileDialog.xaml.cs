@@ -45,6 +45,13 @@ public sealed partial class EditProfileDialog : ContentDialog
         MemoryTextBox.Text = draft.Configuration.MemoryInMB?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         StartupCommandTextBox.Text = draft.Configuration.LogonCommand?.Command ?? string.Empty;
 
+        var policyOverrides = ViewModel.GetPolicyOverrides();
+        if (policyOverrides.Count > 0)
+        {
+            PolicyOverrideInfoBar.Message = string.Join(" ", policyOverrides.Select(o => o.Message));
+            PolicyOverrideInfoBar.IsOpen = true;
+        }
+
         UpdateWritableMappingControls();
     }
 
@@ -144,10 +151,14 @@ public sealed partial class EditProfileDialog : ContentDialog
                 .Where(message => message.Severity == ValidationSeverity.Warning)
                 .Select(message => $"{message.PropertyName}: {message.Message}")
                 .ToList();
+            var overrideMessages = ViewModel.GetPolicyOverrides()
+                .Select(policyOverride => policyOverride.Message)
+                .ToList();
+            var notes = warningMessages.Concat(overrideMessages).ToList();
             SavedSuccessfully = true;
-            PostSaveStatusMessage = warningMessages.Count == 0
+            PostSaveStatusMessage = notes.Count == 0
                 ? $"Saved '{draft.Name}'."
-                : $"Saved '{draft.Name}' with {warningMessages.Count} warning(s): {string.Join("; ", warningMessages)}";
+                : $"Saved '{draft.Name}' with {notes.Count} warning(s): {string.Join("; ", notes)}";
         }
         catch (Exception ex)
         {
