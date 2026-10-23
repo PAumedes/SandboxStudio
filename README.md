@@ -21,7 +21,7 @@ SandboxStudio is a .NET 10 and WinUI 3 source project for managing Windows Sandb
 ### Core
 
 - Profile models, validation, and `.wsb` XML serialization.
-- Local JSON profile storage and five built-in presets, seeded for a new profile store; stores seeded by an earlier release receive presets added since then, while manually curated stores are left untouched.
+- Local JSON profile storage and built-in presets adapted to the host (five on Windows 11 24H2+, plus a pre-24H2 preset that swaps mouse buttons since host mouse settings only flow into the sandbox on 24H2); stores seeded by an earlier release receive presets added since then, while manually curated stores are left untouched.
 - A launcher that validates a profile, then either starts it through the `wsb` CLI (Windows 11 24H2+, reporting the sandbox ID) or writes a temporary `.wsb` file for Windows Sandbox to open.
 
 ### Dashboard

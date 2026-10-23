@@ -1,5 +1,7 @@
 using FluentAssertions;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Presets;
 using SandboxStudio.Core.Storage;
 using Xunit;
 
@@ -14,6 +16,12 @@ public sealed class JsonProfileRepositoryTests : IDisposable
         Guid.Parse("33333333-3333-3333-3333-333333333333")
     ];
 
+    private static readonly CuratedPresets Windows11_24H2Presets =
+        new(new HostCapabilities(osBuild: () => 26100));
+
+    private static readonly CuratedPresets Windows11_23H2Presets =
+        new(new HostCapabilities(osBuild: () => 22631));
+
     private readonly string _tempDir;
     private readonly JsonProfileRepository _sut;
 
@@ -21,7 +29,7 @@ public sealed class JsonProfileRepositoryTests : IDisposable
     {
         _tempDir = Path.Combine(Path.GetTempPath(), "SandboxStudioTests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempDir);
-        _sut = new JsonProfileRepository(_tempDir);
+        _sut = new JsonProfileRepository(_tempDir, Windows11_24H2Presets);
     }
 
     public void Dispose()
@@ -182,7 +190,7 @@ public sealed class JsonProfileRepositoryTests : IDisposable
         }
 
         _sut.Dispose();
-        using var reopenedRepository = new JsonProfileRepository(_tempDir);
+        using var reopenedRepository = new JsonProfileRepository(_tempDir, Windows11_24H2Presets);
         await reopenedRepository.EnsureDefaultPresetsAsync();
 
         (await reopenedRepository.GetAllAsync()).Should().BeEmpty();
@@ -206,7 +214,7 @@ public sealed class JsonProfileRepositoryTests : IDisposable
 
         // Assert - only presets introduced after version 1 appear; deleted v1 presets stay deleted
         profiles.Select(p => p.Id).Should().BeEquivalentTo(newPresetIds);
-        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("2");
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("3");
     }
 
     [Fact]
@@ -253,7 +261,7 @@ public sealed class JsonProfileRepositoryTests : IDisposable
         await _sut.EnsureDefaultPresetsAsync();
 
         // Assert - the upgrade commits the current seed version
-        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("2");
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("3");
     }
 
     [Fact]
@@ -271,7 +279,7 @@ public sealed class JsonProfileRepositoryTests : IDisposable
 
         // Assert
         profiles.Select(p => p.Id).Should().BeEquivalentTo([customProfile.Id]);
-        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("2");
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("3");
     }
 
     [Fact]
@@ -292,7 +300,7 @@ public sealed class JsonProfileRepositoryTests : IDisposable
         // Assert
         profiles.Select(p => p.Id).Should().BeEquivalentTo(newPresetIds);
         File.Exists(Path.Combine(_tempDir, ".initializing")).Should().BeFalse();
-        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("2");
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("3");
     }
 
     [Fact]
@@ -413,5 +421,93 @@ public sealed class JsonProfileRepositoryTests : IDisposable
 
         // Assert
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_OnPre24H2Host_SeedsLeftHandedDesktop()
+    {
+        // Arrange — pre-24H2 hosts do not apply host mouse settings to the sandbox
+        using var sut = new JsonProfileRepository(_tempDir, Windows11_23H2Presets);
+
+        // Act
+        await sut.EnsureDefaultPresetsAsync();
+        var profiles = await sut.GetAllAsync();
+
+        // Assert
+        profiles.Should().ContainSingle(p =>
+            p.Id == Guid.Parse("66666666-6666-6666-6666-666666666666"));
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_On24H2Host_DoesNotSeedLeftHandedDesktop()
+    {
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+        var profiles = await _sut.GetAllAsync();
+
+        // Assert — 24H2 applies host mouse settings automatically
+        profiles.Should().NotContain(p =>
+            p.Id == Guid.Parse("66666666-6666-6666-6666-666666666666"));
+        profiles.Should().HaveCount(5);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenStoreWasSeededAtVersion2_SeedsOnlyVersion3PresetsOnApplicableHosts()
+    {
+        // Arrange — a pre-24H2 store seeded at version 2 receives only the v3 preset
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), "2");
+        using var sut = new JsonProfileRepository(_tempDir, Windows11_23H2Presets);
+
+        // Act
+        await sut.EnsureDefaultPresetsAsync();
+        var profiles = await sut.GetAllAsync();
+
+        // Assert
+        profiles.Should().ContainSingle(p =>
+            p.Id == Guid.Parse("66666666-6666-6666-6666-666666666666"));
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("3");
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenStoreWasCuratedAtVersion2_LeavesItUntouched()
+    {
+        // Arrange — adjudged curated during the v2 upgrade and stamped "2" without seeding
+        await _sut.SaveAsync(new SandboxProfile { Name = "My Custom Profile" });
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), "2");
+        using var sut = new JsonProfileRepository(_tempDir, Windows11_23H2Presets);
+
+        // Act
+        await sut.EnsureDefaultPresetsAsync();
+        var profiles = await sut.GetAllAsync();
+
+        // Assert — no preset may be injected into a manually curated store
+        profiles.Should().ContainSingle(p => p.Name == "My Custom Profile");
+        profiles.Should().HaveCount(1);
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("3");
+    }
+
+    [Fact]
+    public async Task EnsureDefaultPresetsAsync_WhenStoreContainsOnlyConditionalPresetFile_IsNotMisclassifiedAsCurated()
+    {
+        // Arrange — marker "1" store holding only the pre-24H2 preset, opened on a
+        // 24H2 host whose preset list excludes it; the presence check must consult
+        // the full preset-id map, not the host-filtered list.
+        var conditional = Windows11_23H2Presets.GetDefaultPresets()
+            .Single(p => p.Id == Guid.Parse("66666666-6666-6666-6666-666666666666"));
+        await _sut.SaveAsync(conditional);
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), "1");
+
+        // Act
+        await _sut.EnsureDefaultPresetsAsync();
+        var profiles = await _sut.GetAllAsync();
+
+        // Assert — not curated: missing presets are seeded normally
+        profiles.Select(p => p.Id).Should().Contain(new[]
+        {
+            Guid.Parse("44444444-4444-4444-4444-444444444444"),
+            Guid.Parse("55555555-5555-5555-5555-555555555555"),
+            Guid.Parse("66666666-6666-6666-6666-666666666666")
+        });
+        File.ReadAllText(Path.Combine(_tempDir, ".initialized")).Should().Be("3");
     }
 }

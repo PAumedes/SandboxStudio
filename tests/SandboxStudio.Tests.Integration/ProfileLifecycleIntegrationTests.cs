@@ -1,5 +1,7 @@
 using FluentAssertions;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Presets;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Storage;
 using SandboxStudio.Core.Validation;
@@ -17,7 +19,9 @@ public sealed class ProfileLifecycleIntegrationTests : IDisposable
     public ProfileLifecycleIntegrationTests()
     {
         _testRoot = Path.Combine(Path.GetTempPath(), "SandboxStudioIntegration", Guid.NewGuid().ToString("N"));
-        _profileRepo = new JsonProfileRepository(Path.Combine(_testRoot, "Profiles"));
+        _profileRepo = new JsonProfileRepository(
+            Path.Combine(_testRoot, "Profiles"),
+            new CuratedPresets(new HostCapabilities(osBuild: () => 26100)));
     }
 
     public void Dispose()

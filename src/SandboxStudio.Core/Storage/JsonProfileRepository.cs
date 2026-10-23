@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text.Json;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Presets;
 
 namespace SandboxStudio.Core.Storage;
 
@@ -20,26 +22,8 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
     /// </summary>
     private const int InitialSeedVersion = 1;
 
-    /// <summary>
-    /// Current preset seed version; bump when presets are added so existing
-    /// stores receive only the newly introduced ones.
-    /// </summary>
-    private const int CurrentSeedVersion = 2;
-
-    /// <summary>
-    /// The seed version in which each built-in preset was introduced, keyed by profile id.
-    /// </summary>
-    private static readonly IReadOnlyDictionary<Guid, int> PresetIntroducedInVersions =
-        new Dictionary<Guid, int>
-        {
-            [Guid.Parse("11111111-1111-1111-1111-111111111111")] = 1,
-            [Guid.Parse("22222222-2222-2222-2222-222222222222")] = 1,
-            [Guid.Parse("33333333-3333-3333-3333-333333333333")] = 1,
-            [Guid.Parse("44444444-4444-4444-4444-444444444444")] = 2,
-            [Guid.Parse("55555555-5555-5555-5555-555555555555")] = 2,
-        };
-
     private readonly string _profilesDirectory;
+    private readonly CuratedPresets _presets;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private bool _disposed;
     private bool _directoryEnsured;
@@ -49,12 +33,14 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
     /// The storage directory is created lazily on first use.
     /// </summary>
     /// <param name="storageDirectory">Optional custom directory. Defaults to %LocalAppData%/SandboxStudio/Profiles.</param>
-    public JsonProfileRepository(string? storageDirectory = null)
+    /// <param name="presets">Curated preset catalog; defaults to one built from live host capability probes.</param>
+    public JsonProfileRepository(string? storageDirectory = null, CuratedPresets? presets = null)
     {
         _profilesDirectory = storageDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SandboxStudio",
             "Profiles");
+        _presets = presets ?? new CuratedPresets(new HostCapabilities());
     }
 
     /// <inheritdoc/>
@@ -106,11 +92,15 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
         {
             EnsureStorageDirectory();
 
-            // The marker content is the seed version reached so far; stores seeded
-            // before versioning wrote an empty marker and count as version 1.
+            // The marker content is the seed version processed so far, relative to
+            // the host that seeded it — a store stamped on a host whose preset
+            // catalog excluded a conditional preset is not revisited if that preset
+            // later becomes applicable (the store lives in %LocalAppData%, so the
+            // host catalog rarely changes beneath it). Stores seeded before
+            // versioning wrote an empty marker and count as version 1.
             var markerExists = File.Exists(initializedFilePath);
             var seededVersion = ReadSeedVersion(initializedFilePath);
-            if (seededVersion >= CurrentSeedVersion)
+            if (seededVersion >= CuratedPresets.CurrentSeedVersion)
             {
                 // Remove an .initializing marker orphaned by an interrupted concurrent seed.
                 try
@@ -125,20 +115,24 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
                 return;
             }
 
+            var presets = _presets.GetDefaultPresets();
+
             if (!File.Exists(initializingFilePath))
             {
-                // A populated store whose marker is absent — or predates per-preset
-                // tracking and holds no preset files — was curated manually; record
-                // the current version but leave its contents untouched.
-                var isCuratedStore = seededVersion <= InitialSeedVersion &&
+                // A populated store whose marker is absent — or was stamped without
+                // any preset files ever being written — was curated manually; record
+                // the current version but leave its contents untouched. Preset-file
+                // presence is judged against every known preset id, not the
+                // host-filtered list, so conditional presets count on any host.
+                var isCuratedStore = seededVersion < CuratedPresets.CurrentSeedVersion &&
                     Directory.GetFiles(_profilesDirectory, "*.json").Length > 0 &&
                     (!markerExists ||
-                     !GetDefaultPresets().Any(preset => File.Exists(GetProfileFilePath(preset.Id))));
+                     !CuratedPresets.IntroducedInVersions.Keys.Any(id => File.Exists(GetProfileFilePath(id))));
                 if (isCuratedStore)
                 {
                     await File.WriteAllTextAsync(
                         initializedFilePath,
-                        CurrentSeedVersion.ToString(CultureInfo.InvariantCulture),
+                        CuratedPresets.CurrentSeedVersion.ToString(CultureInfo.InvariantCulture),
                         cancellationToken);
                     return;
                 }
@@ -146,9 +140,9 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
                 await File.WriteAllTextAsync(initializingFilePath, string.Empty, cancellationToken);
             }
 
-            foreach (var preset in GetDefaultPresets())
+            foreach (var preset in presets)
             {
-                if (PresetIntroducedInVersions.GetValueOrDefault(preset.Id) <= seededVersion)
+                if (CuratedPresets.IntroducedInVersions.GetValueOrDefault(preset.Id) <= seededVersion)
                 {
                     continue;
                 }
@@ -162,7 +156,7 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
 
             await File.WriteAllTextAsync(
                 initializingFilePath,
-                CurrentSeedVersion.ToString(CultureInfo.InvariantCulture),
+                CuratedPresets.CurrentSeedVersion.ToString(CultureInfo.InvariantCulture),
                 cancellationToken);
 
             try
@@ -273,98 +267,7 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
     }
 
     /// <inheritdoc/>
-    public IReadOnlyList<SandboxProfile> GetDefaultPresets()
-    {
-        return new List<SandboxProfile>
-        {
-            new()
-            {
-                Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                Name = "Air-Gapped Malware Lab",
-                Description = "Completely isolated environment with network disabled and clipboard redirection blocked.",
-                Tags = new() { "Security", "Malware", "Isolated" },
-                IconGlyph = "\uE72E", // Lock icon
-                Configuration = new WsbConfiguration
-                {
-                    Networking = "Disable",
-                    VGpu = "Disable",
-                    ClipboardRedirection = "Disable",
-                    AudioInput = "Disable",
-                    VideoInput = "Disable",
-                    ProtectedClient = "Enable"
-                }
-            },
-            new()
-            {
-                Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-                Name = "Ephemeral Web Browser",
-                Description = "Clean, zero-residual web browsing sandbox with hardware GPU acceleration.",
-                Tags = new() { "Privacy", "Web", "Safe" },
-                IconGlyph = "\uE774", // Globe icon
-                Configuration = new WsbConfiguration
-                {
-                    Networking = "Enable",
-                    VGpu = "Enable",
-                    MemoryInMB = 4096,
-                    LogonCommand = new WsbLogonCommand
-                    {
-                        Command = "cmd.exe /c start msedge.exe --inprivate"
-                    }
-                }
-            },
-            new()
-            {
-                Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-                Name = "Developer Workstation",
-                Description = "Auto-installs Git and VS Code on boot via Winget with 8GB RAM allocated.",
-                Tags = new() { "Development", "Coding", "Tools" },
-                IconGlyph = "\uE7BE", // Code icon
-                Configuration = new WsbConfiguration
-                {
-                    Networking = "Enable",
-                    VGpu = "Enable",
-                    MemoryInMB = 8192,
-                    LogonCommand = new WsbLogonCommand
-                    {
-                        Command = "powershell.exe -ExecutionPolicy Bypass -Command \"winget install -e --id Microsoft.VisualStudioCode --accept-package-agreements --accept-source-agreements; winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements\""
-                    }
-                }
-            },
-            new()
-            {
-                Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
-                Name = "Conferencing Test Bed",
-                Description = "Camera and microphone passthrough with networking for safely testing conferencing applications.",
-                Tags = new() { "Testing", "Conferencing" },
-                IconGlyph = "\uE714", // Webcam icon
-                Configuration = new WsbConfiguration
-                {
-                    Networking = "Enable",
-                    VGpu = "Enable",
-                    MemoryInMB = 4096,
-                    AudioInput = "Enable",
-                    VideoInput = "Enable",
-                    ClipboardRedirection = "Enable"
-                }
-            },
-            new()
-            {
-                Id = Guid.Parse("55555555-5555-5555-5555-555555555555"),
-                Name = "Isolated Printer Bench",
-                Description = "Offline sandbox with host printer redirection for testing print-dependent applications.",
-                Tags = new() { "Testing", "Printing", "Offline" },
-                IconGlyph = "\uE749", // Print icon
-                Configuration = new WsbConfiguration
-                {
-                    Networking = "Disable",
-                    VGpu = "Disable",
-                    MemoryInMB = 4096,
-                    ClipboardRedirection = "Disable",
-                    PrinterRedirection = "Enable"
-                }
-            }
-        };
-    }
+    public IReadOnlyList<SandboxProfile> GetDefaultPresets() => _presets.GetDefaultPresets();
 
     private string GetProfileFilePath(Guid id) => Path.Combine(_profilesDirectory, $"{id:N}.json");
 

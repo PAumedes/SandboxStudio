@@ -35,7 +35,8 @@ public interface IProfileRepository
     Task EnsureDefaultPresetsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Generates built-in curated preset profiles.
+    /// Returns the curated presets applicable to this host; presets that only make
+    /// sense on specific Windows builds are excluded elsewhere.
     /// </summary>
     IReadOnlyList<SandboxProfile> GetDefaultPresets();
 }
