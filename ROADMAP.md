@@ -13,7 +13,7 @@ Status: Implemented and locally build- and visually verified; native title-bar i
 
 ## Phase 2 — Profile editor and exports
 
-- Status: Partially implemented. All currently modeled `.wsb` settings are exposed in the editor, and validated export is wired. New mapped folders are read-only by default; writable access requires acknowledgement before Save and confirmation before Launch. Profile duplication and tag management are planned under Phase 5; Windows Sandbox runtime and packaging verification remain unverified.
+- Status: Partially implemented. All currently modeled `.wsb` settings are exposed in the editor, and validated export is wired. New mapped folders are read-only by default; writable access requires acknowledgement before Save and confirmation before Launch. Tag management is planned under Phase 5; Windows Sandbox runtime and packaging verification remain unverified.
 - Keep configuration behavior in testable core logic with focused automated tests.
 - Track spec nuances in the model and validator: environment variables in mapped folder paths (Windows 11 23H2+), the documented 2048 MB auto-bump floor for `MemoryInMB`, and the vGPU default differing on Arm64 devices.
 
@@ -51,10 +51,10 @@ Status: Implemented and locally build- and visually verified; native title-bar i
 
 ## Phase 5 — Library, presets, and import
 
-- Status: Partially implemented. Existing `.wsb` files can be imported into profiles from the dashboard toolbar (`WsbImportService` deserializes, names the profile after the file, validates, and stores it even when invalid so it can be corrected in the editor). Remaining: curated presets beyond the three built-ins, profile duplication and tag management, and the logon-command builder.
+- Status: Partially implemented. Existing `.wsb` files can be imported into profiles from the dashboard toolbar (`WsbImportService` deserializes, names the profile after the file, validates, and stores it even when invalid so it can be corrected in the editor). Profiles can be duplicated from the card menu; `ProfileDuplicationService` deep-copies configuration under a unique "(copy)"-suffixed name with fresh identity and launch metadata. Remaining: curated presets beyond the three built-ins, tag management, and the logon-command builder.
 - Import existing `.wsb` files into profiles via the existing deserializer.
 - Ship curated presets modeled on Microsoft's sample configurations (e.g., isolated testing of unknown downloads, development environment with tool bootstrap).
-- Profile duplication and tag management.
+- Tag management.
 - Logon-command builder that packages multi-step setup into a script delivered through a mapped folder, per Microsoft's recommended pattern.
 
 ## Phase 6 — Theme and localization

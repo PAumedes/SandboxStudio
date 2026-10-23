@@ -116,6 +116,49 @@ public sealed class SandboxProfileCopyTests
         profile.Configuration.LogonCommand!.Command.Should().Be("start.exe");
     }
 
+    [Fact]
+    public void Duplicate_WhenProfileIsNull_ThrowsArgumentNullException()
+    {
+        var act = () => SandboxProfileCopy.Duplicate(null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Duplicate_AssignsNewIdentityAndResetsFavoriteAndLaunchHistory()
+    {
+        var profile = CreateProfile();
+        var before = DateTimeOffset.UtcNow;
+
+        var duplicate = SandboxProfileCopy.Duplicate(profile);
+
+        duplicate.Id.Should().NotBe(profile.Id);
+        duplicate.Id.Should().NotBeEmpty();
+        duplicate.CreatedAt.Should().BeOnOrAfter(before);
+        duplicate.CreatedAt.Should().BeOnOrBefore(DateTimeOffset.UtcNow);
+        duplicate.LastLaunchedAt.Should().BeNull();
+        duplicate.IsFavorite.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Duplicate_PreservesContentAsIndependentCopy()
+    {
+        var profile = CreateProfile();
+
+        var duplicate = SandboxProfileCopy.Duplicate(profile);
+
+        duplicate.Name.Should().Be(profile.Name);
+        duplicate.Description.Should().Be(profile.Description);
+        duplicate.Tags.Should().Equal(profile.Tags);
+        duplicate.Tags.Should().NotBeSameAs(profile.Tags);
+        duplicate.IconGlyph.Should().Be(profile.IconGlyph);
+        duplicate.Configuration.Should().NotBeSameAs(profile.Configuration);
+        duplicate.Configuration.MappedFolders[0].Should().NotBeSameAs(profile.Configuration.MappedFolders[0]);
+        duplicate.Configuration.MappedFolders[0].HostFolder.Should().Be(@"C:\Projects");
+        duplicate.Configuration.LogonCommand.Should().NotBeSameAs(profile.Configuration.LogonCommand);
+        duplicate.Configuration.MemoryInMB.Should().Be(8192);
+    }
+
     private static SandboxProfile CreateProfile()
     {
         return new SandboxProfile

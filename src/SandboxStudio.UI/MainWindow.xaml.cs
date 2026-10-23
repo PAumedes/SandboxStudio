@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Serialization;
+using SandboxStudio.Core.Storage;
 using SandboxStudio.Core.Validation;
 using SandboxStudio.UI.ViewModels;
 using SandboxStudio.UI.Views;
@@ -121,6 +122,32 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             ViewModel.StatusMessage = $"Edit error: {ex.Message}";
+        }
+    }
+
+    private async void OnDuplicateClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuFlyoutItem { Tag: SandboxProfile profile })
+        {
+            return;
+        }
+
+        try
+        {
+            var duplicationService = App.Host.Services.GetRequiredService<ProfileDuplicationService>();
+            var duplicate = await duplicationService.DuplicateAsync(profile.Id);
+            if (duplicate is null)
+            {
+                ViewModel.StatusMessage = $"Could not duplicate '{profile.Name}': profile no longer exists.";
+                return;
+            }
+
+            ViewModel.Profiles.Add(duplicate);
+            ViewModel.StatusMessage = $"Duplicated '{profile.Name}' as '{duplicate.Name}'.";
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = $"Duplicate error: {ex.Message}";
         }
     }
 
