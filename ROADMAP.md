@@ -51,7 +51,7 @@ Status: Implemented and locally build- and visually verified; native title-bar i
 
 ## Phase 5 — Library, presets, and import
 
-- Status: Planned.
+- Status: Partially implemented. Existing `.wsb` files can be imported into profiles from the dashboard toolbar (`WsbImportService` deserializes, names the profile after the file, validates, and stores it even when invalid so it can be corrected in the editor). Remaining: curated presets beyond the three built-ins, profile duplication and tag management, and the logon-command builder.
 - Import existing `.wsb` files into profiles via the existing deserializer.
 - Ship curated presets modeled on Microsoft's sample configurations (e.g., isolated testing of unknown downloads, development environment with tool bootstrap).
 - Profile duplication and tag management.

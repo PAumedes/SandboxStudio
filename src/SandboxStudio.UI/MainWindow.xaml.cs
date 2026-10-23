@@ -204,6 +204,59 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async void OnImportClicked(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var picker = new FileOpenPicker
+            {
+                SuggestedStartLocation = PickerLocationId.DocumentsLibrary
+            };
+            picker.FileTypeFilter.Add(".wsb");
+            WinRT.Interop.InitializeWithWindow.Initialize(
+                picker,
+                WinRT.Interop.WindowNative.GetWindowHandle(this));
+
+            var file = await picker.PickSingleFileAsync();
+            if (file is null)
+            {
+                return;
+            }
+
+            var importService = App.Host.Services.GetRequiredService<WsbImportService>();
+            var result = await importService.ImportAsync(file.Path);
+            await ViewModel.LoadProfilesAsync();
+
+            var errorCount = result.Validation.Messages.Count(message => message.Severity == ValidationSeverity.Error);
+            var warningCount = result.Validation.Messages.Count(message => message.Severity == ValidationSeverity.Warning);
+            var notes = new List<string>();
+            if (errorCount > 0)
+            {
+                notes.Add($"{errorCount} error(s)");
+            }
+
+            if (warningCount > 0)
+            {
+                notes.Add($"{warningCount} warning(s)");
+            }
+
+            ViewModel.StatusMessage = notes.Count == 0
+                ? $"Imported '{result.Profile.Name}' from {file.Name}."
+                : $"Imported '{result.Profile.Name}' with {string.Join(", ", notes)}: {FormatValidationMessages(result.Validation)}";
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = $"Import failed: {ex.Message}";
+        }
+    }
+
+    private static string FormatValidationMessages(ValidationResult result) =>
+        string.Join(
+            "; ",
+            result.Messages
+                .Where(message => message.Severity != ValidationSeverity.Info)
+                .Select(message => $"{message.PropertyName}: {message.Message}"));
+
     private static string FormatValidationErrors(ValidationResult result) =>
         string.Join(
             "; ",

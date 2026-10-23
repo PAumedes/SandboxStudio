@@ -36,6 +36,7 @@ public sealed partial class App : Application
                 services.AddSingleton<IWsbSerializer, WsbSerializer>();
                 services.AddSingleton<IWsbValidator, WsbValidator>();
                 services.AddSingleton<WsbExportService>();
+                services.AddSingleton<WsbImportService>();
                 services.AddSingleton<IProfileRepository, JsonProfileRepository>();
                 services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
                 services.AddSingleton<IHostCapabilities, HostCapabilities>();
