@@ -48,32 +48,40 @@
         <Grid Grid.Row="1" Margin="24,16,24,12" ColumnDefinitions="Auto, *, Auto">
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
                 <StackPanel>
-                    <TextBlock Text="Your sandboxes" Style="{ThemeResource SubtitleTextBlockStyle}" FontWeight="SemiBold" />
-                    <TextBlock Text="Choose a profile to launch or manage" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Uid="ProfilesHeading" Style="{ThemeResource SubtitleTextBlockStyle}" FontWeight="SemiBold" />
+                    <TextBlock x:Uid="ProfilesCaption" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </StackPanel>
 
             <TextBox
                 Grid.Column="1"
-                PlaceholderText="Filter by tags (comma-separated)"
-                AutomationProperties.Name="Filter profiles by tag"
+                x:Uid="TagFilterBox"
                 Width="240"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
                 Text="{x:Bind ViewModel.FilterText, Mode=TwoWay}" />
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                <Button Content="Refresh" Command="{x:Bind ViewModel.LoadProfilesCommand}">
+                <Button x:Uid="RefreshButton" Command="{x:Bind ViewModel.LoadProfilesCommand}">
                     <Button.KeyboardAccelerators>
                         <KeyboardAccelerator Key="F5" />
                     </Button.KeyboardAccelerators>
                 </Button>
-                <Button Content="Import .wsb" Click="OnImportClicked" />
-                <Button Content="Sessions" Click="OnSessionsClicked" />
+                <Button x:Uid="ImportButton" Click="OnImportClicked" />
+                <Button x:Uid="SessionsButton" Click="OnSessionsClicked" />
+                <DropDownButton x:Uid="LanguageButton">
+                    <DropDownButton.Flyout>
+                        <MenuFlyout>
+                            <RadioMenuFlyoutItem x:Uid="LanguageSystemDefaultItem" x:Name="LanguageSystemDefaultItem" GroupName="Language" Click="OnLanguageClicked" Tag="" />
+                            <RadioMenuFlyoutItem x:Uid="LanguageEnglishItem" x:Name="LanguageEnglishItem" GroupName="Language" Click="OnLanguageClicked" Tag="en-US" />
+                            <RadioMenuFlyoutItem x:Uid="LanguageSpanishItem" x:Name="LanguageSpanishItem" GroupName="Language" Click="OnLanguageClicked" Tag="es-ES" />
+                        </MenuFlyout>
+                    </DropDownButton.Flyout>
+                </DropDownButton>
                 <Button Style="{ThemeResource AccentButtonStyle}" Command="{x:Bind ViewModel.CreateProfileCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE710;" FontSize="14" />
-                        <TextBlock Text="New Profile" />
+                        <TextBlock x:Uid="NewProfileText" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -85,19 +93,24 @@
                 <!-- Sandbox Readiness Warning Banner if not detected -->
                 <InfoBar
                     x:Name="SandboxStatusInfoBar"
+                    x:Uid="SandboxStatusInfoBar"
                     IsOpen="False"
-                    Severity="Warning"
-                    Title="Windows Sandbox Not Detected"
-                    Message="Windows Sandbox is not enabled on this host. Profiles can be created, but launching them requires Windows Sandbox." />
+                    Severity="Warning" />
+
+                <!-- Language-change restart notice -->
+                <InfoBar
+                    x:Name="LanguageRestartInfoBar"
+                    x:Uid="LanguageRestartInfoBar"
+                    IsOpen="False"
+                    Severity="Informational" />
 
                 <!-- Empty state when the tag filter matches nothing -->
                 <InfoBar
                     x:Name="NoMatchingProfilesInfoBar"
+                    x:Uid="NoMatchInfoBar"
                     IsOpen="{x:Bind ViewModel.HasNoMatchingProfiles, Mode=OneWay}"
                     Severity="Informational"
-                    IsClosable="False"
-                    Title="No profiles match"
-                    Message="No saved profiles contain all of the tags in the filter. Adjust or clear the filter." />
+                    IsClosable="False" />
 
                 <!-- Profiles ItemsControl -->
                 <ItemsRepeater x:Name="ProfilesRepeater" ItemsSource="{x:Bind ViewModel.Profiles, Mode=OneWay}">
@@ -120,22 +133,22 @@
                                     <Button Grid.Column="2" Content="&#xE712;" FontFamily="{ThemeResource SymbolThemeFontFamily}" Background="Transparent" BorderThickness="0">
                                         <Button.Flyout>
                                             <MenuFlyout>
-                                                <MenuFlyoutItem Text="Edit Profile" Click="OnEditClicked" Tag="{x:Bind}">
+                                                <MenuFlyoutItem x:Uid="EditProfileMenuItem" Click="OnEditClicked" Tag="{x:Bind}">
                                                     <MenuFlyoutItem.Icon>
                                                         <FontIcon Glyph="&#xE70F;" />
                                                     </MenuFlyoutItem.Icon>
                                                 </MenuFlyoutItem>
-                                                <MenuFlyoutItem Text="Duplicate" Click="OnDuplicateClicked" Tag="{x:Bind}">
+                                                <MenuFlyoutItem x:Uid="DuplicateMenuItem" Click="OnDuplicateClicked" Tag="{x:Bind}">
                                                     <MenuFlyoutItem.Icon>
                                                         <FontIcon Glyph="&#xE8C8;" />
                                                     </MenuFlyoutItem.Icon>
                                                 </MenuFlyoutItem>
-                                                <MenuFlyoutItem Text="Export .wsb" Click="OnExportClicked" Tag="{x:Bind}">
+                                                <MenuFlyoutItem x:Uid="ExportMenuItem" Click="OnExportClicked" Tag="{x:Bind}">
                                                     <MenuFlyoutItem.Icon>
                                                         <FontIcon Glyph="&#xE74E;" />
                                                     </MenuFlyoutItem.Icon>
                                                 </MenuFlyoutItem>
-                                                <MenuFlyoutItem Text="Delete Profile" Click="OnDeleteClicked" Tag="{x:Bind}">
+                                                <MenuFlyoutItem x:Uid="DeleteProfileMenuItem" Click="OnDeleteClicked" Tag="{x:Bind}">
                                                     <MenuFlyoutItem.Icon>
                                                         <FontIcon Glyph="&#xE74D;" />
                                                     </MenuFlyoutItem.Icon>
@@ -163,7 +176,7 @@
                                     <Button Grid.Column="1" Style="{ThemeResource AccentButtonStyle}" Click="OnLaunchClicked" Tag="{x:Bind}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE768;" FontSize="12" />
-                                            <TextBlock Text="Launch" />
+                                            <TextBlock x:Uid="LaunchText" />
                                         </StackPanel>
                                     </Button>
                                 </Grid>

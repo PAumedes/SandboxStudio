@@ -97,25 +97,22 @@ public sealed partial class MainViewModel : ObservableObject
         IsSandboxInstalled = status == HostSandboxStatus.Available;
         SandboxStatusMessage = status switch
         {
-            HostSandboxStatus.Available => "Windows Sandbox Engine Ready",
-            HostSandboxStatus.UnsupportedEdition => "Windows Sandbox requires a Pro, Enterprise, or Education edition",
-            HostSandboxStatus.VirtualizationDisabled => "Hardware virtualization is disabled or unavailable",
-            _ => "Windows Sandbox Engine Unavailable"
+            HostSandboxStatus.Available => Localizer.Get("SandboxStatusReady"),
+            HostSandboxStatus.UnsupportedEdition => Localizer.Get("SandboxStatusEditionRequired"),
+            HostSandboxStatus.VirtualizationDisabled => Localizer.Get("SandboxStatusVirtDisabled"),
+            _ => Localizer.Get("SandboxStatusUnavailable")
         };
         SandboxUnavailableReason = status switch
         {
-            HostSandboxStatus.UnsupportedEdition =>
-                "Windows Sandbox requires a Pro, Enterprise, or Education edition of Windows.",
-            HostSandboxStatus.NotInstalled =>
-                "Windows Sandbox is not enabled on this host. Profiles can be created, but launching them requires the Windows Sandbox optional feature.",
-            HostSandboxStatus.VirtualizationDisabled =>
-                "Windows Sandbox is installed, but hardware virtualization appears disabled. Enable virtualization (Intel VT-x/AMD-V) in BIOS/UEFI settings; inside a virtual machine, check nested-virtualization support.",
+            HostSandboxStatus.UnsupportedEdition => Localizer.Get("SandboxInfoEditionRequired"),
+            HostSandboxStatus.NotInstalled => Localizer.Get("SandboxInfoNotInstalled"),
+            HostSandboxStatus.VirtualizationDisabled => Localizer.Get("SandboxInfoVirtDisabled"),
             _ => null
         };
         SandboxUnavailableTitle = status switch
         {
-            HostSandboxStatus.UnsupportedEdition => "Windows Sandbox unsupported on this edition",
-            HostSandboxStatus.VirtualizationDisabled => "Hardware virtualization disabled",
+            HostSandboxStatus.UnsupportedEdition => Localizer.Get("SandboxStatusEditionUnsupported"),
+            HostSandboxStatus.VirtualizationDisabled => Localizer.Get("SandboxStatusVirtDisabledShort"),
             _ => null
         };
     }
@@ -127,7 +124,7 @@ public sealed partial class MainViewModel : ObservableObject
     public async Task LoadProfilesAsync()
     {
         IsLoading = true;
-        StatusMessage = "Loading profiles...";
+        StatusMessage = Localizer.Get("StatusLoadingProfiles");
 
         try
         {
@@ -142,12 +139,12 @@ public sealed partial class MainViewModel : ObservableObject
             ApplyFilter();
 
             StatusMessage = HasActiveTagFilter
-                ? $"{Profiles.Count} of {_allProfiles.Count} profiles ready."
-                : $"{Profiles.Count} profiles ready.";
+                ? Localizer.Format("StatusProfilesFiltered", Profiles.Count, _allProfiles.Count)
+                : Localizer.Format("StatusProfilesReady", Profiles.Count);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Error loading profiles: {ex.Message}";
+            StatusMessage = Localizer.Format("StatusProfilesLoadError", ex.Message);
         }
         finally
         {
@@ -163,8 +160,8 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var newProfile = new SandboxProfile
         {
-            Name = $"New Sandbox {_allProfiles.Count + 1}",
-            Description = "Custom sandbox configuration."
+            Name = Localizer.Format("NewProfileDefaultName", _allProfiles.Count + 1),
+            Description = Localizer.Get("NewProfileDefaultDescription")
         };
 
         try
@@ -174,11 +171,11 @@ public sealed partial class MainViewModel : ObservableObject
             FilterText = string.Empty; // clear the filter so the new card is visible
             ApplyFilter();
             SelectedProfile = newProfile;
-            StatusMessage = $"Created profile '{newProfile.Name}'.";
+            StatusMessage = Localizer.Format("StatusProfileCreated", newProfile.Name);
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Error creating profile: {ex.Message}";
+            StatusMessage = Localizer.Format("StatusProfileCreateError", ex.Message);
         }
     }
 
@@ -193,22 +190,22 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        StatusMessage = $"Launching '{profile.Name}'...";
+        StatusMessage = Localizer.Format("StatusLaunching", profile.Name);
 
         var result = await _launcher.LaunchProfileAsync(profile);
         if (result.IsSuccess)
         {
             var sessionNote = result.SessionId is { } sessionId
-                ? $" (session {sessionId.ToString("N")[..8]} — see Sessions)"
+                ? Localizer.Format("LaunchSessionNote", sessionId.ToString("N")[..8])
                 : string.Empty;
             var overrides = _capabilities.GetPolicyOverrides(profile.Configuration);
             StatusMessage = overrides.Count == 0
-                ? $"'{profile.Name}' launched successfully.{sessionNote}"
-                : $"'{profile.Name}' launched{sessionNote}; host policy overrides: {string.Join("; ", overrides.Select(o => o.SettingName).Distinct())}.";
+                ? Localizer.Format("StatusLaunchSuccess", profile.Name, sessionNote)
+                : Localizer.Format("StatusLaunchPolicyOverrides", profile.Name, sessionNote, string.Join("; ", overrides.Select(o => o.SettingName).Distinct()));
         }
         else
         {
-            StatusMessage = $"Launch failed: {result.ErrorMessage}";
+            StatusMessage = Localizer.Format("StatusLaunchFailed", result.ErrorMessage);
         }
     }
 
@@ -228,7 +225,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _allProfiles.Remove(profile);
             ApplyFilter();
-            StatusMessage = $"Deleted '{profile.Name}'.";
+            StatusMessage = Localizer.Format("StatusProfileDeleted", profile.Name);
         }
     }
 
@@ -260,7 +257,7 @@ public sealed partial class MainViewModel : ObservableObject
         HasNoMatchingProfiles = Profiles.Count == 0 && requiredTags.Count > 0;
         if (requiredTags.Count > 0)
         {
-            StatusMessage = $"{Profiles.Count} of {_allProfiles.Count} profiles match the tag filter.";
+            StatusMessage = Localizer.Format("StatusTagFilterMatch", Profiles.Count, _allProfiles.Count);
         }
     }
 }

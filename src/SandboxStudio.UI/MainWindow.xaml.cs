@@ -45,6 +45,13 @@ public sealed partial class MainWindow : Window
 
         ApplyTitleBarCaptionColors(Content as FrameworkElement);
 
+        // Reflect the stored language override in the picker; a stored tag outside
+        // the shipped languages shows System default (the override is inert).
+        var currentTag = App.Host.Services.GetRequiredService<IAppSettingsStore>().Load().LanguageTag;
+        LanguageEnglishItem.IsChecked = string.Equals(currentTag, "en-US", StringComparison.OrdinalIgnoreCase);
+        LanguageSpanishItem.IsChecked = string.Equals(currentTag, "es-ES", StringComparison.OrdinalIgnoreCase);
+        LanguageSystemDefaultItem.IsChecked = !LanguageEnglishItem.IsChecked && !LanguageSpanishItem.IsChecked;
+
         // Check Sandbox availability
         SandboxStatusInfoBar.IsOpen = !ViewModel.IsSandboxInstalled;
         if (ViewModel.SandboxUnavailableReason is { } unavailableReason)
@@ -107,10 +114,10 @@ public sealed partial class MainWindow : Window
             {
                 var dialog = new ContentDialog
                 {
-                    Title = "Writable host folder access",
-                    Content = "This profile allows Windows Sandbox to change files in mapped host folders. Continue only if you trust this configuration.",
-                    PrimaryButtonText = "Launch anyway",
-                    CloseButtonText = "Cancel",
+                    Title = Localizer.Get("WritableWarningTitle"),
+                    Content = Localizer.Get("WritableWarningMessage"),
+                    PrimaryButtonText = Localizer.Get("LaunchAnywayButtonText"),
+                    CloseButtonText = Localizer.Get("CancelButtonText"),
                     DefaultButton = ContentDialogButton.Close,
                     XamlRoot = Content.XamlRoot
                 };
@@ -125,7 +132,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            ViewModel.StatusMessage = $"Launch error: {ex.Message}";
+            ViewModel.StatusMessage = Localizer.Format("StatusLaunchError", ex.Message);
         }
     }
 
@@ -158,7 +165,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            ViewModel.StatusMessage = $"Edit error: {ex.Message}";
+            ViewModel.StatusMessage = Localizer.Format("StatusEditError", ex.Message);
         }
     }
 
@@ -175,16 +182,16 @@ public sealed partial class MainWindow : Window
             var duplicate = await duplicationService.DuplicateAsync(profile.Id);
             if (duplicate is null)
             {
-                ViewModel.StatusMessage = $"Could not duplicate '{profile.Name}': profile no longer exists.";
+                ViewModel.StatusMessage = Localizer.Format("DuplicateNotFound", profile.Name);
                 return;
             }
 
             ViewModel.TrackProfile(duplicate);
-            ViewModel.StatusMessage = $"Duplicated '{profile.Name}' as '{duplicate.Name}'.";
+            ViewModel.StatusMessage = Localizer.Format("DuplicateSuccess", profile.Name, duplicate.Name);
         }
         catch (Exception ex)
         {
-            ViewModel.StatusMessage = $"Duplicate error: {ex.Message}";
+            ViewModel.StatusMessage = Localizer.Format("StatusDuplicateError", ex.Message);
         }
     }
 
@@ -196,10 +203,10 @@ public sealed partial class MainWindow : Window
             {
                 var dialog = new ContentDialog
                 {
-                    Title = "Delete profile?",
-                    Content = $"Delete '{profile.Name}'? This action cannot be undone.",
-                    PrimaryButtonText = "Delete",
-                    CloseButtonText = "Cancel",
+                    Title = Localizer.Get("DeleteDialogTitle"),
+                    Content = Localizer.Format("DeleteDialogMessage", profile.Name),
+                    PrimaryButtonText = Localizer.Get("DeleteDialogPrimaryButton"),
+                    CloseButtonText = Localizer.Get("CancelButtonText"),
                     DefaultButton = ContentDialogButton.Close,
                     XamlRoot = Content.XamlRoot
                 };
@@ -214,7 +221,7 @@ public sealed partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                ViewModel.StatusMessage = $"Delete error: {ex.Message}";
+                ViewModel.StatusMessage = Localizer.Format("StatusDeleteError", ex.Message);
             }
         }
     }
@@ -232,7 +239,7 @@ public sealed partial class MainWindow : Window
             var validationResult = validator.Validate(profile.Configuration);
             if (!validationResult.IsValid)
             {
-                ViewModel.StatusMessage = $"Export blocked: {FormatValidationErrors(validationResult)}";
+                ViewModel.StatusMessage = Localizer.Format("ExportBlocked", FormatValidationErrors(validationResult));
                 return;
             }
 
@@ -241,7 +248,7 @@ public sealed partial class MainWindow : Window
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
                 SuggestedFileName = "SandboxProfile"
             };
-            picker.FileTypeChoices.Add("Windows Sandbox configuration", new List<string> { ".wsb" });
+            picker.FileTypeChoices.Add(Localizer.Get("WsbFileTypeLabel"), new List<string> { ".wsb" });
             WinRT.Interop.InitializeWithWindow.Initialize(
                 picker,
                 WinRT.Interop.WindowNative.GetWindowHandle(this));
@@ -256,16 +263,16 @@ public sealed partial class MainWindow : Window
             var result = await exportService.ExportAsync(profile.Configuration, file.Path);
             if (!result.IsValid)
             {
-                ViewModel.StatusMessage = $"Export blocked: {FormatValidationErrors(result)}";
+                ViewModel.StatusMessage = Localizer.Format("ExportBlocked", FormatValidationErrors(result));
                 return;
             }
 
             var warningCount = result.Messages.Count(message => message.Severity == ValidationSeverity.Warning);
-            ViewModel.StatusMessage = $"Exported .wsb to {file.Path} (warnings: {warningCount}).";
+            ViewModel.StatusMessage = Localizer.Format("ExportSuccess", file.Path, warningCount);
         }
         catch (Exception ex)
         {
-            ViewModel.StatusMessage = $"Export error: {ex.Message}";
+            ViewModel.StatusMessage = Localizer.Format("StatusExportError", ex.Message);
         }
     }
 
@@ -298,21 +305,21 @@ public sealed partial class MainWindow : Window
             var notes = new List<string>();
             if (errorCount > 0)
             {
-                notes.Add($"{errorCount} error(s)");
+                notes.Add(Localizer.Format("ValidationErrorCount", errorCount));
             }
 
             if (warningCount > 0)
             {
-                notes.Add($"{warningCount} warning(s)");
+                notes.Add(Localizer.Format("ValidationWarningCount", warningCount));
             }
 
             ViewModel.StatusMessage = notes.Count == 0
-                ? $"Imported '{result.Profile.Name}' from {file.Name}."
-                : $"Imported '{result.Profile.Name}' with {string.Join(", ", notes)}: {FormatValidationMessages(result.Validation)}";
+                ? Localizer.Format("ImportSuccess", result.Profile.Name, file.Name)
+                : Localizer.Format("ImportSuccessWithNotes", result.Profile.Name, string.Join(", ", notes), FormatValidationMessages(result.Validation));
         }
         catch (Exception ex)
         {
-            ViewModel.StatusMessage = $"Import failed: {ex.Message}";
+            ViewModel.StatusMessage = Localizer.Format("StatusImportFailed", ex.Message);
         }
     }
 
@@ -324,6 +331,41 @@ public sealed partial class MainWindow : Window
             XamlRoot = Content.XamlRoot
         };
         await dialog.ShowAsync();
+    }
+
+    private void OnLanguageClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioMenuFlyoutItem item)
+        {
+            return;
+        }
+
+        var tag = item.Tag as string;
+        try
+        {
+            var settings = App.Host.Services.GetRequiredService<IAppSettingsStore>().Load();
+            if (string.Equals(settings.LanguageTag, tag, StringComparison.OrdinalIgnoreCase) ||
+                (settings.LanguageTag is null && string.IsNullOrEmpty(tag)))
+            {
+                return;
+            }
+
+            App.Host.Services.GetRequiredService<IAppSettingsStore>()
+                .Save(settings with { LanguageTag = string.IsNullOrEmpty(tag) ? null : tag });
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = Localizer.Format("StatusSettingsSaveError", ex.Message);
+            return;
+        }
+
+        // The override applies at the next launch; selecting the language the app is
+        // already running in cancels the pending restart notice.
+        var effectiveTag = Microsoft.Windows.Globalization.ApplicationLanguages.Languages
+            .FirstOrDefault();
+        LanguageRestartInfoBar.IsOpen =
+            !string.Equals(effectiveTag, tag, StringComparison.OrdinalIgnoreCase) &&
+            !(effectiveTag is null && string.IsNullOrEmpty(tag));
     }
 
     private static string FormatValidationMessages(ValidationResult result) =>

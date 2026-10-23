@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- MainWindow.xaml -->
+  <data name="ProfilesHeading.Text" xml:space="preserve"><value>Tus espacios aislados</value></data>
+  <data name="ProfilesCaption.Text" xml:space="preserve"><value>Elige un perfil para iniciarlo o administrarlo</value></data>
+  <data name="TagFilterBox.PlaceholderText" xml:space="preserve"><value>Filtrar por etiquetas (separadas por comas)</value></data>
+  <data name="TagFilterBox.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Filtrar perfiles por etiqueta</value></data>
+  <data name="RefreshButton.Content" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="ImportButton.Content" xml:space="preserve"><value>Importar .wsb</value></data>
+  <data name="SessionsButton.Content" xml:space="preserve"><value>Sesiones</value></data>
+  <data name="LanguageButton.Content" xml:space="preserve"><value>Idioma</value></data>
+  <data name="LanguageSystemDefaultItem.Text" xml:space="preserve"><value>Idioma del sistema</value></data>
+  <data name="LanguageEnglishItem.Text" xml:space="preserve"><value>English</value></data>
+  <data name="LanguageSpanishItem.Text" xml:space="preserve"><value>Español</value></data>
+  <data name="NewProfileText.Text" xml:space="preserve"><value>Nuevo perfil</value></data>
+  <data name="SandboxStatusInfoBar.Title" xml:space="preserve"><value>Windows Sandbox no detectado</value></data>
+  <data name="SandboxStatusInfoBar.Message" xml:space="preserve"><value>Windows Sandbox no está habilitado en este equipo. Puedes crear perfiles, pero iniciarlos requiere Windows Sandbox.</value></data>
+  <data name="NoMatchInfoBar.Title" xml:space="preserve"><value>Sin coincidencias</value></data>
+  <data name="NoMatchInfoBar.Message" xml:space="preserve"><value>Ningún perfil guardado contiene todas las etiquetas del filtro. Ajusta o borra el filtro.</value></data>
+  <data name="LanguageRestartInfoBar.Title" xml:space="preserve"><value>Reinicio necesario</value></data>
+  <data name="LanguageRestartInfoBar.Message" xml:space="preserve"><value>Reinicia SandboxStudio para aplicar el cambio de idioma.</value></data>
+  <data name="EditProfileMenuItem.Text" xml:space="preserve"><value>Editar perfil</value></data>
+  <data name="DuplicateMenuItem.Text" xml:space="preserve"><value>Duplicar</value></data>
+  <data name="ExportMenuItem.Text" xml:space="preserve"><value>Exportar .wsb</value></data>
+  <data name="DeleteProfileMenuItem.Text" xml:space="preserve"><value>Eliminar perfil</value></data>
+  <data name="LaunchText.Text" xml:space="preserve"><value>Iniciar</value></data>
+
+  <!-- MainWindow.xaml.cs -->
+  <data name="WritableWarningTitle" xml:space="preserve"><value>Acceso de escritura a carpetas del host</value></data>
+  <data name="WritableWarningMessage" xml:space="preserve"><value>Este perfil permite que Windows Sandbox modifique archivos en las carpetas del host asignadas. Continúa solo si confías en esta configuración.</value></data>
+  <data name="LaunchAnywayButtonText" xml:space="preserve"><value>Iniciar de todos modos</value></data>
+  <data name="CancelButtonText" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="StatusLaunchError" xml:space="preserve"><value>Error al iniciar: {0}</value></data>
+  <data name="StatusEditError" xml:space="preserve"><value>Error al editar: {0}</value></data>
+  <data name="StatusDuplicateError" xml:space="preserve"><value>Error al duplicar: {0}</value></data>
+  <data name="StatusDeleteError" xml:space="preserve"><value>Error al eliminar: {0}</value></data>
+  <data name="StatusExportError" xml:space="preserve"><value>Error al exportar: {0}</value></data>
+  <data name="StatusImportFailed" xml:space="preserve"><value>Error al importar: {0}</value></data>
+  <data name="DuplicateNotFound" xml:space="preserve"><value>No se pudo duplicar '{0}': el perfil ya no existe.</value></data>
+  <data name="DuplicateSuccess" xml:space="preserve"><value>'{0}' duplicado como '{1}'.</value></data>
+  <data name="DeleteDialogTitle" xml:space="preserve"><value>¿Eliminar perfil?</value></data>
+  <data name="DeleteDialogMessage" xml:space="preserve"><value>¿Eliminar '{0}'? Esta acción no se puede deshacer.</value></data>
+  <data name="DeleteDialogPrimaryButton" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="ExportBlocked" xml:space="preserve"><value>Exportación bloqueada: {0}</value></data>
+  <data name="ExportSuccess" xml:space="preserve"><value>.wsb exportado a {0} (advertencias: {1}).</value></data>
+  <data name="WsbFileTypeLabel" xml:space="preserve"><value>Configuración de Windows Sandbox</value></data>
+  <data name="ValidationErrorCount" xml:space="preserve"><value>{0} error(es)</value></data>
+  <data name="ValidationWarningCount" xml:space="preserve"><value>{0} advertencia(s)</value></data>
+  <data name="ImportSuccess" xml:space="preserve"><value>'{0}' importado desde {1}.</value></data>
+  <data name="ImportSuccessWithNotes" xml:space="preserve"><value>'{0}' importado con {1}: {2}</value></data>
+  <data name="StatusSettingsSaveError" xml:space="preserve"><value>No se pudieron guardar los ajustes: {0}</value></data>
+
+  <!-- MainViewModel -->
+  <data name="SandboxStatusReady" xml:space="preserve"><value>Motor de Windows Sandbox listo</value></data>
+  <data name="SandboxStatusEditionRequired" xml:space="preserve"><value>Windows Sandbox requiere una edición Pro, Enterprise o Education</value></data>
+  <data name="SandboxStatusVirtDisabled" xml:space="preserve"><value>La virtualización de hardware está deshabilitada o no disponible</value></data>
+  <data name="SandboxStatusUnavailable" xml:space="preserve"><value>Motor de Windows Sandbox no disponible</value></data>
+  <data name="SandboxInfoEditionRequired" xml:space="preserve"><value>Windows Sandbox requiere una edición Pro, Enterprise o Education de Windows.</value></data>
+  <data name="SandboxInfoNotInstalled" xml:space="preserve"><value>Windows Sandbox no está habilitado en este equipo. Puedes crear perfiles, pero iniciarlos requiere la característica opcional Windows Sandbox.</value></data>
+  <data name="SandboxInfoVirtDisabled" xml:space="preserve"><value>Windows Sandbox está instalado, pero la virtualización de hardware parece deshabilitada. Activa la virtualización (Intel VT-x/AMD-V) en la configuración de BIOS/UEFI; en una máquina virtual, comprueba la compatibilidad con virtualización anidada.</value></data>
+  <data name="SandboxStatusEditionUnsupported" xml:space="preserve"><value>Windows Sandbox no es compatible con esta edición</value></data>
+  <data name="SandboxStatusVirtDisabledShort" xml:space="preserve"><value>Virtualización de hardware deshabilitada</value></data>
+  <data name="StatusLoadingProfiles" xml:space="preserve"><value>Cargando perfiles...</value></data>
+  <data name="StatusProfilesFiltered" xml:space="preserve"><value>{0} de {1} perfiles listos.</value></data>
+  <data name="StatusProfilesReady" xml:space="preserve"><value>{0} perfiles listos.</value></data>
+  <data name="StatusProfilesLoadError" xml:space="preserve"><value>Error al cargar los perfiles: {0}</value></data>
+  <data name="NewProfileDefaultName" xml:space="preserve"><value>Nuevo espacio aislado {0}</value></data>
+  <data name="NewProfileDefaultDescription" xml:space="preserve"><value>Configuración personalizada de espacio aislado.</value></data>
+  <data name="StatusProfileCreated" xml:space="preserve"><value>Perfil '{0}' creado.</value></data>
+  <data name="StatusProfileCreateError" xml:space="preserve"><value>Error al crear el perfil: {0}</value></data>
+  <data name="StatusLaunching" xml:space="preserve"><value>Iniciando '{0}'...</value></data>
+  <data name="LaunchSessionNote" xml:space="preserve"><value> (sesión {0} — consulta Sesiones)</value><comment>Leading space is load-bearing — it separates this note from the preceding sentence inside StatusLaunchSuccess/StatusLaunchPolicyOverrides. "consulta Sesiones" refers to the Sessions toolbar button label (SessionsButton.Content) and must stay consistent with it.</comment></data>
+  <data name="StatusLaunchSuccess" xml:space="preserve"><value>'{0}' iniciado correctamente.{1}</value></data>
+  <data name="StatusLaunchPolicyOverrides" xml:space="preserve"><value>'{0}' iniciado{1}; directivas del host anuladas: {2}.</value></data>
+  <data name="StatusLaunchFailed" xml:space="preserve"><value>Error al iniciar: {0}</value></data>
+  <data name="StatusProfileDeleted" xml:space="preserve"><value>'{0}' eliminado.</value></data>
+  <data name="StatusTagFilterMatch" xml:space="preserve"><value>{0} de {1} perfiles coinciden con el filtro de etiquetas.</value></data>
+</root>

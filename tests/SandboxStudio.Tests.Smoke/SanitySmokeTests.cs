@@ -66,6 +66,7 @@ public sealed class SanitySmokeTests : IDisposable
         services.AddSingleton<WsbImportService>();
         services.AddSingleton<ProfileDuplicationService>();
         services.AddSingleton<ILogonScriptService, LogonScriptService>();
+        services.AddSingleton<IAppSettingsStore, JsonAppSettingsStore>();
         services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
         services.AddSingleton<IHostCapabilities, HostCapabilities>();
         services.AddSingleton<CuratedPresets>();
@@ -84,6 +85,7 @@ public sealed class SanitySmokeTests : IDisposable
         provider.GetRequiredService<WsbImportService>().Should().NotBeNull();
         provider.GetRequiredService<ProfileDuplicationService>().Should().NotBeNull();
         provider.GetRequiredService<ILogonScriptService>().Should().NotBeNull();
+        provider.GetRequiredService<IAppSettingsStore>().Should().NotBeNull();
         provider.GetRequiredService<ISandboxSessionManager>().Should().NotBeNull();
     }
 

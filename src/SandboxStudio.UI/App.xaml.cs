@@ -30,6 +30,25 @@ public sealed partial class App : Application
     /// </summary>
     public App()
     {
+        // Must precede InitializeComponent: PrimaryLanguageOverride only affects
+        // resource contexts created after it is set. The stored tag is user-editable
+        // file content, so ignore values that are malformed or not among the
+        // manifest languages instead of letting the setter throw.
+        var storedTag = new JsonAppSettingsStore().Load().LanguageTag;
+        if (!string.IsNullOrEmpty(storedTag) &&
+            Microsoft.Windows.Globalization.ApplicationLanguages.ManifestLanguages
+                .Any(language => string.Equals(language, storedTag, StringComparison.OrdinalIgnoreCase)))
+        {
+            try
+            {
+                Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = storedTag;
+            }
+            catch (ArgumentException)
+            {
+                // Malformed tag survived the manifest check; fall back to OS language.
+            }
+        }
+
         InitializeComponent();
 
         Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
@@ -42,6 +61,7 @@ public sealed partial class App : Application
                 services.AddSingleton<WsbImportService>();
                 services.AddSingleton<ProfileDuplicationService>();
                 services.AddSingleton<ILogonScriptService, LogonScriptService>();
+                services.AddSingleton<IAppSettingsStore, JsonAppSettingsStore>();
                 services.AddSingleton<CuratedPresets>();
                 services.AddSingleton<IProfileRepository, JsonProfileRepository>();
                 services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
