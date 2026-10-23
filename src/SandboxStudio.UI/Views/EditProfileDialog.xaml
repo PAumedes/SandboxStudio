@@ -4,9 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:conv="using:SandboxStudio.UI.Converters"
     xmlns:models="using:SandboxStudio.Core.Models"
-    Title="Edit profile"
-    PrimaryButtonText="Save"
-    CloseButtonText="Cancel"
+    x:Uid="EditProfileDialog"
     DefaultButton="Primary"
     PrimaryButtonClick="OnPrimaryButtonClick">
 
@@ -30,109 +28,106 @@
 
             <InfoBar
                 x:Name="PolicyOverrideInfoBar"
+                x:Uid="PolicyOverrideInfoBar"
                 Severity="Warning"
                 IsOpen="False"
-                IsClosable="False"
-                Title="Host policy will override settings" />
+                IsClosable="False" />
 
-            <TextBox x:Name="NameTextBox" Header="Name" MaxLength="120" />
+            <TextBox x:Name="NameTextBox" x:Uid="NameTextBox" MaxLength="120" />
             <TextBox
                 x:Name="DescriptionTextBox"
-                Header="Description"
+                x:Uid="DescriptionTextBox"
                 MaxLength="500"
                 AcceptsReturn="True"
                 TextWrapping="Wrap"
                 MinHeight="72" />
             <TextBox
                 x:Name="TagsTextBox"
-                Header="Tags"
-                MaxLength="200"
-                PlaceholderText="Comma-separated (e.g. Security, Testing)" />
+                x:Uid="TagsTextBox"
+                MaxLength="200" />
 
-            <ComboBox Header="Networking" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+            <ComboBox x:Uid="NetworkingComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.Networking, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="Unspecified" />
-                <ComboBoxItem Content="Default" />
-                <ComboBoxItem Content="Enable" />
-                <ComboBoxItem Content="Disable" />
+                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
             </ComboBox>
             <TextBlock
                 x:Name="NetworkingAvailabilityText"
                 Style="{StaticResource AvailabilityCaption}"
                 Visibility="Collapsed" />
-            <ComboBox Header="vGPU" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+            <ComboBox x:Uid="VGpuComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VGpu, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="Unspecified" />
-                <ComboBoxItem Content="Default" />
-                <ComboBoxItem Content="Enable" />
-                <ComboBoxItem Content="Disable" />
+                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
             </ComboBox>
             <TextBlock
                 x:Name="VGpuAvailabilityText"
                 Style="{StaticResource AvailabilityCaption}"
                 Visibility="Collapsed" />
 
-            <TextBox x:Name="MemoryTextBox" Header="Memory (MB)" PlaceholderText="Optional" />
+            <TextBox x:Name="MemoryTextBox" x:Uid="MemoryTextBox" />
             <TextBlock
                 x:Name="MemoryAvailabilityText"
                 Style="{StaticResource AvailabilityCaption}"
                 Visibility="Collapsed" />
 
-            <TextBlock Text="Devices and security" />
-            <TextBlock
-                Text="Enabling host devices, clipboard, or printers increases sharing with the host."
-                TextWrapping="Wrap" />
+            <TextBlock x:Uid="DevicesHeading" />
+            <TextBlock x:Uid="DevicesCaption" TextWrapping="Wrap" />
 
-            <ComboBox Header="Microphone input" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+            <ComboBox x:Uid="AudioInputComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.AudioInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="Unspecified" />
-                <ComboBoxItem Content="Default" />
-                <ComboBoxItem Content="Enable" />
-                <ComboBoxItem Content="Disable" />
+                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
             </ComboBox>
             <TextBlock
                 x:Name="AudioInputAvailabilityText"
                 Style="{StaticResource AvailabilityCaption}"
                 Visibility="Collapsed" />
-            <ComboBox Header="Camera input" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+            <ComboBox x:Uid="VideoInputComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VideoInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="Unspecified" />
-                <ComboBoxItem Content="Default" />
-                <ComboBoxItem Content="Enable" />
-                <ComboBoxItem Content="Disable" />
+                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
             </ComboBox>
             <TextBlock
                 x:Name="VideoInputAvailabilityText"
                 Style="{StaticResource AvailabilityCaption}"
                 Visibility="Collapsed" />
-            <ComboBox Header="Protected client" HorizontalAlignment="Stretch"
+            <ComboBox x:Uid="ProtectedClientComboBox" HorizontalAlignment="Stretch"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ProtectedClient, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="Unspecified" />
-                <ComboBoxItem Content="Default" />
-                <ComboBoxItem Content="Enable" />
-                <ComboBoxItem Content="Disable" />
+                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
             </ComboBox>
             <TextBlock
                 x:Name="ProtectedClientAvailabilityText"
                 Style="{StaticResource AvailabilityCaption}"
                 Visibility="Collapsed" />
-            <ComboBox Header="Clipboard sharing" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+            <ComboBox x:Uid="ClipboardComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ClipboardRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="Unspecified" />
-                <ComboBoxItem Content="Default" />
-                <ComboBoxItem Content="Enable" />
-                <ComboBoxItem Content="Disable" />
+                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
             </ComboBox>
             <TextBlock
                 x:Name="ClipboardAvailabilityText"
                 Style="{StaticResource AvailabilityCaption}"
                 Visibility="Collapsed" />
-            <ComboBox Header="Printer sharing" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+            <ComboBox x:Uid="PrinterComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
                       SelectedIndex="{x:Bind ViewModel.Profile.Configuration.PrinterRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="Unspecified" />
-                <ComboBoxItem Content="Default" />
-                <ComboBoxItem Content="Enable" />
-                <ComboBoxItem Content="Disable" />
+                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
             </ComboBox>
             <TextBlock
                 x:Name="PrinterAvailabilityText"
@@ -141,18 +136,15 @@
 
             <TextBox
                 x:Name="StartupCommandTextBox"
-                Header="Startup command (runs inside the sandbox at logon)"
-                PlaceholderText="Optional" />
+                x:Uid="StartupCommandTextBox" />
             <CheckBox
                 x:Name="ScriptModeCheckBox"
-                Content="Package as a script — each line runs in order from a read-only mapped folder"
+                x:Uid="ScriptModeCheckBox"
                 Checked="OnScriptModeToggled"
                 Unchecked="OnScriptModeToggled" />
 
-            <TextBlock Text="Mapped folders" />
-            <TextBlock
-                Text="Mapped folders share host data with Windows Sandbox. Keep them read-only unless writable access is necessary."
-                TextWrapping="Wrap" />
+            <TextBlock x:Uid="MappedFoldersHeading" />
+            <TextBlock x:Uid="MappedFoldersCaption" TextWrapping="Wrap" />
             <TextBlock
                 x:Name="MappedFoldersAvailabilityText"
                 Style="{StaticResource AvailabilityCaption}"
@@ -172,38 +164,38 @@
                         <StackPanel Spacing="8" Margin="0,0,0,12">
                             <TextBox
                                 x:Name="HostFolderTextBox"
-                                Header="Host folder"
+                                x:Uid="HostFolderTextBox"
                                 Text="{x:Bind HostFolder, Mode=TwoWay}" />
                             <TextBlock
-                                Text="This host folder does not exist. Windows Sandbox may be unable to start."
+                                x:Uid="MissingHostFolderText"
                                 TextWrapping="Wrap"
                                 Visibility="{Binding ElementName=HostFolderTextBox, Path=Text, Mode=OneWay, Converter={StaticResource MissingHostFolderVisibility}}" />
                             <TextBox
-                                Header="Sandbox folder (optional)"
+                                x:Uid="SandboxFolderTextBox"
                                 Text="{x:Bind SandboxFolder, Mode=TwoWay}" />
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <CheckBox
-                                    Content="Read-only"
+                                    x:Uid="ReadOnlyCheckBox"
                                     IsChecked="{Binding IsReadOnly, Mode=TwoWay}"
                                     Checked="OnReadOnlyStateChanged"
                                     Unchecked="OnReadOnlyStateChanged" />
-                                <Button Content="Remove" Click="OnRemoveMappedFolderClicked" />
+                                <Button x:Uid="RemoveFolderButton" Click="OnRemoveMappedFolderClicked" />
                             </StackPanel>
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <Button Content="Add mapped folder" Click="OnAddMappedFolderClicked" />
+            <Button x:Uid="AddFolderButton" Click="OnAddMappedFolderClicked" />
 
             <TextBlock
                 x:Name="WritableMappingWarning"
-                Text="Writable mappings let the sandbox change host files."
+                x:Uid="WritableMappingWarning"
                 TextWrapping="Wrap"
                 Visibility="Collapsed" />
             <CheckBox
                 x:Name="AcknowledgeWritableMapping"
-                Content="I understand writable mappings let the sandbox change host files."
+                x:Uid="AcknowledgeWritableMapping"
                 Visibility="Collapsed" />
         </StackPanel>
     </ScrollViewer>

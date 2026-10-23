@@ -57,7 +57,7 @@ public sealed partial class SessionsDialog : ContentDialog
             _items.Clear();
             if (!_sessions.IsSupported)
             {
-                ShowStatus(InfoBarSeverity.Warning, "The wsb CLI requires Windows 11 24H2 or later with Windows Sandbox enabled.");
+                ShowStatus(InfoBarSeverity.Warning, Localizer.Get("SessionsUnsupported"));
                 return;
             }
 
@@ -75,7 +75,7 @@ public sealed partial class SessionsDialog : ContentDialog
 
             if (_items.Count == 0)
             {
-                ShowStatus(InfoBarSeverity.Informational, "No sandbox sessions are running.");
+                ShowStatus(InfoBarSeverity.Informational, Localizer.Get("SessionsEmpty"));
             }
         }
         catch (OperationCanceledException)
@@ -99,26 +99,26 @@ public sealed partial class SessionsDialog : ContentDialog
         // can be open in a window at a time.
         var commandBox = new TextBox
         {
-            Header = "Command",
-            PlaceholderText = "app.exe or a built-in command",
+            Header = Localizer.Get("ExecCommandHeader"),
+            PlaceholderText = Localizer.Get("ExecCommandPlaceholder"),
             MinWidth = 320
         };
         var runAsBox = new ComboBox
         {
-            Header = "Run as",
+            Header = Localizer.Get("ExecRunAsHeader"),
             SelectedIndex = 0,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        runAsBox.Items.Add(new ComboBoxItem { Tag = "System", Content = "System" });
-        runAsBox.Items.Add(new ComboBoxItem { Tag = "ExistingLogin", Content = "Existing login (requires a connected session)" });
+        runAsBox.Items.Add(new ComboBoxItem { Tag = "System", Content = Localizer.Get("ExecRunAsSystem") });
+        runAsBox.Items.Add(new ComboBoxItem { Tag = "ExistingLogin", Content = Localizer.Get("ExecRunAsExistingLogin") });
         var workDirBox = new TextBox
         {
-            Header = "Working directory (optional)",
+            Header = Localizer.Get("ExecWorkDirHeader"),
             PlaceholderText = @"C:\Tools"
         };
         var note = new TextBlock
         {
-            Text = "Command output cannot be captured; only the exit code comes back.",
+            Text = Localizer.Get("ExecNote"),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12
         };
@@ -132,7 +132,7 @@ public sealed partial class SessionsDialog : ContentDialog
         }
         var runButton = new Button
         {
-            Content = "Run",
+            Content = Localizer.Get("ExecRunButton"),
             HorizontalAlignment = HorizontalAlignment.Right
         };
         var panel = new StackPanel { Spacing = 10 };
@@ -148,14 +148,14 @@ public sealed partial class SessionsDialog : ContentDialog
             if (_busy)
             {
                 // Keep the flyout open so the user does not lose typed input.
-                ShowStatus(InfoBarSeverity.Warning, "Another operation is in progress.");
+                ShowStatus(InfoBarSeverity.Warning, Localizer.Get("SessionOperationBusy"));
                 return;
             }
 
             var command = commandBox.Text.Trim();
             if (command.Length == 0)
             {
-                ShowStatus(InfoBarSeverity.Warning, "Enter a command to run.");
+                ShowStatus(InfoBarSeverity.Warning, Localizer.Get("ExecCommandRequired"));
                 return;
             }
 
@@ -173,11 +173,11 @@ public sealed partial class SessionsDialog : ContentDialog
                 {
                     ShowStatus(
                         exitCode == 0 ? InfoBarSeverity.Success : InfoBarSeverity.Warning,
-                        $"Command finished with exit code {exitCode}.");
+                        Localizer.Format("ExecExitCodeMessage", exitCode));
                 }
                 else
                 {
-                    ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? "The command could not be run.");
+                    ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? Localizer.Get("ExecFailedMessage"));
                 }
             });
         };
@@ -206,7 +206,7 @@ public sealed partial class SessionsDialog : ContentDialog
             {
                 _items[index] = new SessionItem(
                     item.Session,
-                    result.Addresses.Count == 0 ? "no IP reported" : string.Join(", ", result.Addresses));
+                    result.Addresses.Count == 0 ? Localizer.Get("IpNoneReported") : string.Join(", ", result.Addresses));
             }
         });
     }
@@ -220,22 +220,22 @@ public sealed partial class SessionsDialog : ContentDialog
 
         var hostPathBox = new TextBox
         {
-            Header = "Host folder",
+            Header = Localizer.Get("ShareHostFolderHeader"),
             PlaceholderText = @"C:\host\folder",
             MinWidth = 260
         };
-        var browseButton = new Button { Content = "Browse…", VerticalAlignment = VerticalAlignment.Bottom };
+        var browseButton = new Button { Content = Localizer.Get("ShareBrowseButton"), VerticalAlignment = VerticalAlignment.Bottom };
         var hostRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         hostRow.Children.Add(hostPathBox);
         hostRow.Children.Add(browseButton);
         var sandboxPathBox = new TextBox
         {
-            Header = "Sandbox folder",
+            Header = Localizer.Get("ShareSandboxFolderHeader"),
             PlaceholderText = @"C:\sandbox\folder",
             MinWidth = 320
         };
-        var allowWriteBox = new CheckBox { Content = "Allow the sandbox to write to this folder" };
-        var shareButton = new Button { Content = "Share", HorizontalAlignment = HorizontalAlignment.Right };
+        var allowWriteBox = new CheckBox { Content = Localizer.Get("ShareAllowWrite") };
+        var shareButton = new Button { Content = Localizer.Get("ShareButtonText"), HorizontalAlignment = HorizontalAlignment.Right };
         var panel = new StackPanel { Spacing = 10 };
         panel.Children.Add(hostRow);
         panel.Children.Add(sandboxPathBox);
@@ -262,7 +262,7 @@ public sealed partial class SessionsDialog : ContentDialog
             }
             catch (Exception ex)
             {
-                ShowStatus(InfoBarSeverity.Error, $"Could not open the folder picker: {ex.Message}");
+                ShowStatus(InfoBarSeverity.Error, Localizer.Format("SharePickerError", ex.Message));
             }
             finally
             {
@@ -276,7 +276,7 @@ public sealed partial class SessionsDialog : ContentDialog
         {
             if (_busy)
             {
-                ShowStatus(InfoBarSeverity.Warning, "Another operation is in progress.");
+                ShowStatus(InfoBarSeverity.Warning, Localizer.Get("SessionOperationBusy"));
                 return;
             }
 
@@ -284,13 +284,13 @@ public sealed partial class SessionsDialog : ContentDialog
             var sandboxPath = sandboxPathBox.Text.Trim();
             if (hostPath.Length == 0 || sandboxPath.Length == 0)
             {
-                ShowStatus(InfoBarSeverity.Warning, "Enter both a host folder and a sandbox folder.");
+                ShowStatus(InfoBarSeverity.Warning, Localizer.Get("ShareBothRequired"));
                 return;
             }
 
             if (!Directory.Exists(hostPath))
             {
-                ShowStatus(InfoBarSeverity.Warning, $"Host folder '{hostPath}' does not exist.");
+                ShowStatus(InfoBarSeverity.Warning, Localizer.Format("ShareHostMissing", hostPath));
                 return;
             }
 
@@ -302,8 +302,8 @@ public sealed partial class SessionsDialog : ContentDialog
                 ShowStatus(
                     result.IsSuccess ? InfoBarSeverity.Success : InfoBarSeverity.Error,
                     result.IsSuccess
-                        ? $"Shared '{hostPath}' at '{sandboxPath}'."
-                        : result.ErrorMessage ?? "The folder could not be shared.");
+                        ? Localizer.Format("ShareSuccess", hostPath, sandboxPath)
+                        : result.ErrorMessage ?? Localizer.Get("ShareFailed"));
             });
         };
 
@@ -322,7 +322,7 @@ public sealed partial class SessionsDialog : ContentDialog
             var result = await _sessions.ConnectAsync(item.Session.Id, _closedCts.Token);
             if (!result.IsSuccess)
             {
-                ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? "Could not connect to the session.");
+                ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? Localizer.Get("SessionConnectFailed"));
             }
         });
     }
@@ -340,7 +340,7 @@ public sealed partial class SessionsDialog : ContentDialog
             var result = await _sessions.StopAsync(item.Session.Id, _closedCts.Token);
             if (!result.IsSuccess)
             {
-                ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? "Could not stop the session.");
+                ShowStatus(InfoBarSeverity.Error, result.ErrorMessage ?? Localizer.Get("SessionStopFailed"));
                 return;
             }
 
@@ -395,10 +395,10 @@ public sealed partial class SessionsDialog : ContentDialog
             var detail = session switch
             {
                 { State: SandboxSessionState.Running, Uptime: { } uptime } =>
-                    $"Running \u00B7 up {FormatUptime(uptime)}",
-                { State: SandboxSessionState.Running } => "Running",
-                { State: SandboxSessionState.Stopped } => "Stopped",
-                _ => "State not reported"
+                    Localizer.Format("SessionStateRunningUptime", FormatUptime(uptime)),
+                { State: SandboxSessionState.Running } => Localizer.Get("SessionStateRunning"),
+                { State: SandboxSessionState.Stopped } => Localizer.Get("SessionStateStopped"),
+                _ => Localizer.Get("SessionStateUnknown")
             };
             DetailText = ipText is null ? detail : $"{detail} \u00B7 {ipText}";
             StateBrush = session.State == SandboxSessionState.Stopped

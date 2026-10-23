@@ -127,11 +127,11 @@ public sealed partial class EditProfileViewModel : ObservableObject
         {
             ValidationSummary = string.Join("; ", result.Messages
                 .Where(m => m.Severity == ValidationSeverity.Error)
-                .Select(m => $"{m.PropertyName}: {m.Message}"));
+                .Select(m => Localizer.Format("ValidationMessageFormat", m.PropertyName, m.Message)));
         }
         else
         {
-            ValidationSummary = "Configuration is valid.";
+            ValidationSummary = Localizer.Get("ValidationOk");
         }
     }
 
@@ -145,21 +145,21 @@ public sealed partial class EditProfileViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(name))
         {
             HasErrors = true;
-            ValidationSummary = "A profile name is required.";
+            ValidationSummary = Localizer.Get("ValidationNameRequired");
             return false;
         }
 
         if (name.Length > 120)
         {
             HasErrors = true;
-            ValidationSummary = "A profile name cannot exceed 120 characters.";
+            ValidationSummary = Localizer.Get("ValidationNameTooLong");
             return false;
         }
 
         if ((Profile.Description?.Length ?? 0) > 500)
         {
             HasErrors = true;
-            ValidationSummary = "A profile description cannot exceed 500 characters.";
+            ValidationSummary = Localizer.Get("ValidationDescTooLong");
             return false;
         }
 

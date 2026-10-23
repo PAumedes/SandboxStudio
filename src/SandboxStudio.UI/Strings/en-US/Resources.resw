@@ -134,4 +134,107 @@
   <data name="StatusLaunchFailed" xml:space="preserve"><value>Launch failed: {0}</value></data>
   <data name="StatusProfileDeleted" xml:space="preserve"><value>Deleted '{0}'.</value></data>
   <data name="StatusTagFilterMatch" xml:space="preserve"><value>{0} of {1} profiles match the tag filter.</value></data>
+
+  <!-- EditProfileDialog.xaml -->
+  <data name="EditProfileDialog.Title" xml:space="preserve"><value>Edit profile</value></data>
+  <data name="EditProfileDialog.PrimaryButtonText" xml:space="preserve"><value>Save</value></data>
+  <data name="EditProfileDialog.CloseButtonText" xml:space="preserve"><value>Cancel</value></data>
+  <data name="PolicyOverrideInfoBar.Title" xml:space="preserve"><value>Host policy will override settings</value></data>
+  <data name="NameTextBox.Header" xml:space="preserve"><value>Name</value></data>
+  <data name="DescriptionTextBox.Header" xml:space="preserve"><value>Description</value></data>
+  <data name="TagsTextBox.Header" xml:space="preserve"><value>Tags</value></data>
+  <data name="TagsTextBox.PlaceholderText" xml:space="preserve"><value>Comma-separated (e.g. Security, Testing)</value></data>
+  <data name="NetworkingComboBox.Header" xml:space="preserve"><value>Networking</value></data>
+  <data name="VGpuComboBox.Header" xml:space="preserve"><value>vGPU</value></data>
+  <data name="AudioInputComboBox.Header" xml:space="preserve"><value>Microphone input</value></data>
+  <data name="VideoInputComboBox.Header" xml:space="preserve"><value>Camera input</value></data>
+  <data name="ProtectedClientComboBox.Header" xml:space="preserve"><value>Protected client</value></data>
+  <data name="ClipboardComboBox.Header" xml:space="preserve"><value>Clipboard sharing</value></data>
+  <data name="PrinterComboBox.Header" xml:space="preserve"><value>Printer sharing</value></data>
+  <data name="MemoryTextBox.Header" xml:space="preserve"><value>Memory (MB)</value></data>
+  <data name="MemoryTextBox.PlaceholderText" xml:space="preserve"><value>Optional</value></data>
+  <data name="DevicesHeading.Text" xml:space="preserve"><value>Devices and security</value></data>
+  <data name="DevicesCaption.Text" xml:space="preserve"><value>Enabling host devices, clipboard, or printers increases sharing with the host.</value></data>
+  <data name="StartupCommandTextBox.Header" xml:space="preserve"><value>Startup command (runs inside the sandbox at logon)</value></data>
+  <data name="StartupCommandTextBox.PlaceholderText" xml:space="preserve"><value>Optional</value></data>
+  <data name="ScriptModeCheckBox.Content" xml:space="preserve"><value>Package as a script — each line runs in order from a read-only mapped folder</value></data>
+  <data name="MappedFoldersHeading.Text" xml:space="preserve"><value>Mapped folders</value></data>
+  <data name="MappedFoldersCaption.Text" xml:space="preserve"><value>Mapped folders share host data with Windows Sandbox. Keep them read-only unless writable access is necessary.</value></data>
+  <data name="HostFolderTextBox.Header" xml:space="preserve"><value>Host folder</value></data>
+  <data name="MissingHostFolderText.Text" xml:space="preserve"><value>This host folder does not exist. Windows Sandbox may be unable to start.</value></data>
+  <data name="SandboxFolderTextBox.Header" xml:space="preserve"><value>Sandbox folder (optional)</value></data>
+  <data name="ReadOnlyCheckBox.Content" xml:space="preserve"><value>Read-only</value></data>
+  <data name="RemoveFolderButton.Content" xml:space="preserve"><value>Remove</value></data>
+  <data name="AddFolderButton.Content" xml:space="preserve"><value>Add mapped folder</value></data>
+  <data name="WritableMappingWarning.Text" xml:space="preserve"><value>Writable mappings let the sandbox change host files.</value></data>
+  <data name="AcknowledgeWritableMapping.Content" xml:space="preserve"><value>I understand writable mappings let the sandbox change host files.</value></data>
+
+  <!-- Shared tri-state option labels (x:Bind to dialog properties) -->
+  <data name="TriStateUnspecified" xml:space="preserve"><value>Unspecified</value></data>
+  <data name="TriStateDefault" xml:space="preserve"><value>Default</value></data>
+  <data name="TriStateEnabled" xml:space="preserve"><value>Enable</value></data>
+  <data name="TriStateDisabled" xml:space="preserve"><value>Disable</value></data>
+
+  <!-- EditProfileDialog.xaml.cs / EditProfileViewModel -->
+  <data name="MappedFoldersFeatureLabel" xml:space="preserve"><value>Mapped folders</value></data>
+  <data name="WritableMappedFoldersFeatureLabel" xml:space="preserve"><value>Writable mapped folders</value></data>
+  <data name="MappedFolderEnvVarsFeatureLabel" xml:space="preserve"><value>Environment variables in host paths</value></data>
+  <data name="AvailabilityCaptionFormat" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="MemoryNotIntegerError" xml:space="preserve"><value>Memory must be a whole number of megabytes.</value></data>
+  <data name="WritableAckRequiredError" xml:space="preserve"><value>Acknowledge that writable mappings let the sandbox change host files before saving.</value></data>
+  <data name="ValidationCorrectError" xml:space="preserve"><value>Please correct the profile values.</value></data>
+  <data name="ValidationMessageFormat" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="ValidationWarningsNote" xml:space="preserve"><value>{0} warning(s): {1}</value></data>
+  <data name="PolicyOverridesNote" xml:space="preserve"><value>host policy overrides: {0}</value></data>
+  <data name="NonAsciiScriptNote" xml:space="preserve"><value>the script contains non-ASCII characters that cmd.exe may decode incorrectly</value></data>
+  <data name="StatusProfileSaved" xml:space="preserve"><value>Saved '{0}'.</value></data>
+  <data name="StatusProfileSavedWithNotes" xml:space="preserve"><value>Saved '{0}' with {1}.</value></data>
+  <data name="StatusProfileSaveError" xml:space="preserve"><value>The profile could not be saved: {0}</value></data>
+  <data name="ValidationOk" xml:space="preserve"><value>Configuration is valid.</value></data>
+  <data name="ValidationNameRequired" xml:space="preserve"><value>A profile name is required.</value></data>
+  <data name="ValidationNameTooLong" xml:space="preserve"><value>A profile name cannot exceed 120 characters.</value></data>
+  <data name="ValidationDescTooLong" xml:space="preserve"><value>A profile description cannot exceed 500 characters.</value></data>
+
+  <!-- SessionsDialog.xaml -->
+  <data name="SessionsDialog.Title" xml:space="preserve"><value>Sandbox sessions</value></data>
+  <data name="SessionsDialog.CloseButtonText" xml:space="preserve"><value>Close</value></data>
+  <data name="SessionsRefreshButton.Content" xml:space="preserve"><value>Refresh</value></data>
+  <data name="ConnectButton.Content" xml:space="preserve"><value>Connect</value></data>
+  <data name="ExecButton.Content" xml:space="preserve"><value>Exec…</value></data>
+  <data name="IpButton.Content" xml:space="preserve"><value>IP</value></data>
+  <data name="ShareButton.Content" xml:space="preserve"><value>Share…</value></data>
+  <data name="StopButton.Content" xml:space="preserve"><value>Stop</value></data>
+
+  <!-- SessionsDialog.xaml.cs -->
+  <data name="SessionsUnsupported" xml:space="preserve"><value>The wsb CLI requires Windows 11 24H2 or later with Windows Sandbox enabled.</value></data>
+  <data name="SessionsEmpty" xml:space="preserve"><value>No sandbox sessions are running.</value></data>
+  <data name="ExecCommandHeader" xml:space="preserve"><value>Command</value></data>
+  <data name="ExecCommandPlaceholder" xml:space="preserve"><value>app.exe or a built-in command</value></data>
+  <data name="ExecRunAsHeader" xml:space="preserve"><value>Run as</value></data>
+  <data name="ExecRunAsSystem" xml:space="preserve"><value>System</value></data>
+  <data name="ExecRunAsExistingLogin" xml:space="preserve"><value>Existing login (requires a connected session)</value></data>
+  <data name="ExecWorkDirHeader" xml:space="preserve"><value>Working directory (optional)</value></data>
+  <data name="ExecNote" xml:space="preserve"><value>Command output cannot be captured; only the exit code comes back.</value></data>
+  <data name="ExecRunButton" xml:space="preserve"><value>Run</value></data>
+  <data name="SessionOperationBusy" xml:space="preserve"><value>Another operation is in progress.</value></data>
+  <data name="ExecCommandRequired" xml:space="preserve"><value>Enter a command to run.</value></data>
+  <data name="ExecExitCodeMessage" xml:space="preserve"><value>Command finished with exit code {0}.</value></data>
+  <data name="ExecFailedMessage" xml:space="preserve"><value>The command could not be run.</value></data>
+  <data name="IpNoneReported" xml:space="preserve"><value>no IP reported</value></data>
+  <data name="ShareHostFolderHeader" xml:space="preserve"><value>Host folder</value></data>
+  <data name="ShareBrowseButton" xml:space="preserve"><value>Browse…</value></data>
+  <data name="ShareSandboxFolderHeader" xml:space="preserve"><value>Sandbox folder</value></data>
+  <data name="ShareAllowWrite" xml:space="preserve"><value>Allow the sandbox to write to this folder</value></data>
+  <data name="ShareButtonText" xml:space="preserve"><value>Share</value></data>
+  <data name="SharePickerError" xml:space="preserve"><value>Could not open the folder picker: {0}</value></data>
+  <data name="ShareBothRequired" xml:space="preserve"><value>Enter both a host folder and a sandbox folder.</value></data>
+  <data name="ShareHostMissing" xml:space="preserve"><value>Host folder '{0}' does not exist.</value></data>
+  <data name="ShareSuccess" xml:space="preserve"><value>Shared '{0}' at '{1}'.</value></data>
+  <data name="ShareFailed" xml:space="preserve"><value>The folder could not be shared.</value></data>
+  <data name="SessionConnectFailed" xml:space="preserve"><value>Could not connect to the session.</value></data>
+  <data name="SessionStopFailed" xml:space="preserve"><value>Could not stop the session.</value></data>
+  <data name="SessionStateRunningUptime" xml:space="preserve"><value>Running · up {0}</value></data>
+  <data name="SessionStateRunning" xml:space="preserve"><value>Running</value></data>
+  <data name="SessionStateStopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="SessionStateUnknown" xml:space="preserve"><value>State not reported</value></data>
 </root>

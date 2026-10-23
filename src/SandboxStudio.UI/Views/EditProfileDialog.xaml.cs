@@ -32,6 +32,19 @@ public sealed partial class EditProfileDialog : ContentDialog
     /// </summary>
     public string? PostSaveStatusMessage { get; private set; }
 
+    // Localized labels shared by every tri-state ComboBox.
+    /// <summary>Gets the localized label for the unspecified tri-state option.</summary>
+    public string TriStateUnspecifiedLabel => Localizer.Get("TriStateUnspecified");
+
+    /// <summary>Gets the localized label for the default tri-state option.</summary>
+    public string TriStateDefaultLabel => Localizer.Get("TriStateDefault");
+
+    /// <summary>Gets the localized label for the enabled tri-state option.</summary>
+    public string TriStateEnabledLabel => Localizer.Get("TriStateEnabled");
+
+    /// <summary>Gets the localized label for the disabled tri-state option.</summary>
+    public string TriStateDisabledLabel => Localizer.Get("TriStateDisabled");
+
     /// <summary>
     /// Initializes a new instance of <see cref="EditProfileDialog"/>.
     /// </summary>
@@ -84,14 +97,14 @@ public sealed partial class EditProfileDialog : ContentDialog
         ApplyAvailabilityCaption(PrinterAvailabilityText, SandboxFeature.PrinterRedirection);
         ApplyAvailabilityCaption(ProtectedClientAvailabilityText, SandboxFeature.ProtectedClient);
         ApplyAvailabilityCaption(MemoryAvailabilityText, SandboxFeature.MemoryInMB);
-        ApplyAvailabilityCaption(MappedFoldersAvailabilityText, SandboxFeature.MappedFolders, "Mapped folders");
+        ApplyAvailabilityCaption(MappedFoldersAvailabilityText, SandboxFeature.MappedFolders, Localizer.Get("MappedFoldersFeatureLabel"));
         if (ViewModel.GetFeatureAvailability(SandboxFeature.MappedFolders).Status == FeatureStatus.Available)
         {
             // When all folder mapping is unavailable, the writable-specific caption is redundant.
-            ApplyAvailabilityCaption(WritableMappedFoldersAvailabilityText, SandboxFeature.WritableMappedFolders, "Writable mapped folders");
+            ApplyAvailabilityCaption(WritableMappedFoldersAvailabilityText, SandboxFeature.WritableMappedFolders, Localizer.Get("WritableMappedFoldersFeatureLabel"));
         }
 
-        ApplyAvailabilityCaption(MappedFolderEnvVarsAvailabilityText, SandboxFeature.MappedFolderEnvironmentVariables, "Environment variables in host paths");
+        ApplyAvailabilityCaption(MappedFolderEnvVarsAvailabilityText, SandboxFeature.MappedFolderEnvironmentVariables, Localizer.Get("MappedFolderEnvVarsFeatureLabel"));
     }
 
     private void ApplyAvailabilityCaption(TextBlock caption, SandboxFeature feature, string? label = null)
@@ -104,7 +117,7 @@ public sealed partial class EditProfileDialog : ContentDialog
 
         caption.Text = label is null
             ? $"\u26A0 {availability.Reason}"
-            : $"\u26A0 {label}: {availability.Reason}";
+            : $"\u26A0 {Localizer.Format("AvailabilityCaptionFormat", label, availability.Reason)}";
         caption.Visibility = Visibility.Visible;
     }
 
@@ -182,7 +195,7 @@ public sealed partial class EditProfileDialog : ContentDialog
                         CultureInfo.InvariantCulture,
                         out var parsedMemory))
                 {
-                    ShowDialogError("Memory must be a whole number of megabytes.");
+                    ShowDialogError(Localizer.Get("MemoryNotIntegerError"));
                     args.Cancel = true;
                     return;
                 }
@@ -236,7 +249,7 @@ public sealed partial class EditProfileDialog : ContentDialog
             if (draft.Configuration.MappedFolders.Any(folder => !folder.IsReadOnly) &&
                 AcknowledgeWritableMapping.IsChecked != true)
             {
-                ShowDialogError("Acknowledge that writable mappings let the sandbox change host files before saving.");
+                ShowDialogError(Localizer.Get("WritableAckRequiredError"));
                 args.Cancel = true;
                 return;
             }
@@ -245,7 +258,7 @@ public sealed partial class EditProfileDialog : ContentDialog
 
             if (!await ViewModel.SaveAsync())
             {
-                ShowDialogError(ViewModel.ValidationSummary ?? "Please correct the profile values.");
+                ShowDialogError(ViewModel.ValidationSummary ?? Localizer.Get("ValidationCorrectError"));
                 args.Cancel = true;
                 return;
             }
@@ -259,7 +272,7 @@ public sealed partial class EditProfileDialog : ContentDialog
 
             var warningMessages = validationResult.Messages
                 .Where(message => message.Severity == ValidationSeverity.Warning)
-                .Select(message => $"{message.PropertyName}: {message.Message}")
+                .Select(message => Localizer.Format("ValidationMessageFormat", message.PropertyName, message.Message))
                 .ToList();
             var overrideMessages = ViewModel.GetPolicyOverrides()
                 .Select(policyOverride => policyOverride.Message)
@@ -267,27 +280,27 @@ public sealed partial class EditProfileDialog : ContentDialog
             var notes = new List<string>();
             if (warningMessages.Count > 0)
             {
-                notes.Add($"{warningMessages.Count} warning(s): {string.Join("; ", warningMessages)}");
+                notes.Add(Localizer.Format("ValidationWarningsNote", warningMessages.Count, string.Join("; ", warningMessages)));
             }
 
             if (overrideMessages.Count > 0)
             {
-                notes.Add($"host policy overrides: {string.Join("; ", overrideMessages)}");
+                notes.Add(Localizer.Format("PolicyOverridesNote", string.Join("; ", overrideMessages)));
             }
 
             if (scriptCommands is { Count: > 0 } && _scriptService.HasNonAsciiContent(scriptCommands))
             {
-                notes.Add("the script contains non-ASCII characters that cmd.exe may decode incorrectly");
+                notes.Add(Localizer.Get("NonAsciiScriptNote"));
             }
 
             SavedSuccessfully = true;
             PostSaveStatusMessage = notes.Count == 0
-                ? $"Saved '{draft.Name}'."
-                : $"Saved '{draft.Name}' with {string.Join("; ", notes)}.";
+                ? Localizer.Format("StatusProfileSaved", draft.Name)
+                : Localizer.Format("StatusProfileSavedWithNotes", draft.Name, string.Join("; ", notes));
         }
         catch (Exception ex)
         {
-            ShowDialogError($"The profile could not be saved: {ex.Message}");
+            ShowDialogError(Localizer.Format("StatusProfileSaveError", ex.Message));
             args.Cancel = true;
         }
         finally

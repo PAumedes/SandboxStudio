@@ -66,11 +66,17 @@ public sealed class ReswParityTests
         var english = Entries(LoadResw("en-US"));
         var spanish = Entries(LoadResw("es-ES"));
 
-        // Language endonyms and product names are intentionally identical.
+        // Language endonyms, product/technical names, and punctuation-only
+        // format strings are intentionally identical across languages.
         var allowedIdentical = new HashSet<string>
         {
             "LanguageEnglishItem.Text",
             "LanguageSpanishItem.Text",
+            "VGpuComboBox.Header",
+            "IpButton.Content",
+            "ExecRunAsSystem",
+            "AvailabilityCaptionFormat",
+            "ValidationMessageFormat",
         };
 
         var identical = english
@@ -85,9 +91,14 @@ public sealed class ReswParityTests
     [Fact]
     public void EveryXamlUid_HasAResourceKeyPerLanguage()
     {
-        var xaml = File.ReadAllText(
-            Path.Combine(RepoRoot(), "src", "SandboxStudio.UI", "MainWindow.xaml"));
-        var uids = Regex.Matches(xaml, @"x:Uid=""(\w+)""")
+        var uiRoot = Path.Combine(RepoRoot(), "src", "SandboxStudio.UI");
+        var xamlFiles = Directory
+            .EnumerateFiles(uiRoot, "*.xaml", SearchOption.AllDirectories)
+            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            .ToList();
+
+        var uids = xamlFiles
+            .SelectMany(file => Regex.Matches(File.ReadAllText(file), @"x:Uid=""(\w+)"""))
             .Select(match => match.Groups[1].Value)
             .Distinct()
             .ToList();
@@ -97,7 +108,7 @@ public sealed class ReswParityTests
         {
             var keys = Entries(LoadResw(language)).Keys;
             var orphan = uids.Where(uid => !keys.Any(key => key.StartsWith(uid + ".", StringComparison.Ordinal))).ToList();
-            orphan.Should().BeEmpty($"every x:Uid in MainWindow.xaml needs at least one resource key in {language}");
+            orphan.Should().BeEmpty($"every x:Uid in the UI project needs at least one resource key in {language}");
         }
     }
 
@@ -106,8 +117,8 @@ public sealed class ReswParityTests
     {
         var sourceFiles = Directory
             .EnumerateFiles(Path.Combine(RepoRoot(), "src", "SandboxStudio.UI"), "*.cs", SearchOption.AllDirectories)
-            .Concat(Directory.EnumerateFiles(
-                Path.Combine(RepoRoot(), "src", "SandboxStudio.UI", "ViewModels"), "*.cs", SearchOption.AllDirectories));
+            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
 
         var usedKeys = sourceFiles
             .SelectMany(file => Regex.Matches(
@@ -142,5 +153,19 @@ public sealed class ReswParityTests
             .ToList();
 
         mismatched.Should().BeEmpty("format placeholders must line up or string.Format throws at runtime");
+    }
+
+    [Fact]
+    public void ResourceValues_ContainNoStrayBraces()
+    {
+        foreach (var language in new[] { "en-US", "es-ES" })
+        {
+            var stray = Entries(LoadResw(language))
+                .Where(pair => PlaceholderPattern.Replace(pair.Value, string.Empty).Any(c => c is '{' or '}'))
+                .Select(pair => pair.Key)
+                .ToList();
+
+            stray.Should().BeEmpty($"lone braces in {language} values crash string.Format at runtime");
+        }
     }
 }

@@ -134,4 +134,107 @@
   <data name="StatusLaunchFailed" xml:space="preserve"><value>Error al iniciar: {0}</value></data>
   <data name="StatusProfileDeleted" xml:space="preserve"><value>'{0}' eliminado.</value></data>
   <data name="StatusTagFilterMatch" xml:space="preserve"><value>{0} de {1} perfiles coinciden con el filtro de etiquetas.</value></data>
+
+  <!-- EditProfileDialog.xaml -->
+  <data name="EditProfileDialog.Title" xml:space="preserve"><value>Editar perfil</value></data>
+  <data name="EditProfileDialog.PrimaryButtonText" xml:space="preserve"><value>Guardar</value></data>
+  <data name="EditProfileDialog.CloseButtonText" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="PolicyOverrideInfoBar.Title" xml:space="preserve"><value>La directiva del host anulará la configuración</value></data>
+  <data name="NameTextBox.Header" xml:space="preserve"><value>Nombre</value></data>
+  <data name="DescriptionTextBox.Header" xml:space="preserve"><value>Descripción</value></data>
+  <data name="TagsTextBox.Header" xml:space="preserve"><value>Etiquetas</value></data>
+  <data name="TagsTextBox.PlaceholderText" xml:space="preserve"><value>Separadas por comas (p. ej. Seguridad, Pruebas)</value></data>
+  <data name="NetworkingComboBox.Header" xml:space="preserve"><value>Red</value></data>
+  <data name="VGpuComboBox.Header" xml:space="preserve"><value>vGPU</value></data>
+  <data name="AudioInputComboBox.Header" xml:space="preserve"><value>Entrada de micrófono</value></data>
+  <data name="VideoInputComboBox.Header" xml:space="preserve"><value>Entrada de cámara</value></data>
+  <data name="ProtectedClientComboBox.Header" xml:space="preserve"><value>Cliente protegido</value></data>
+  <data name="ClipboardComboBox.Header" xml:space="preserve"><value>Uso compartido del portapapeles</value></data>
+  <data name="PrinterComboBox.Header" xml:space="preserve"><value>Uso compartido de impresoras</value></data>
+  <data name="MemoryTextBox.Header" xml:space="preserve"><value>Memoria (MB)</value></data>
+  <data name="MemoryTextBox.PlaceholderText" xml:space="preserve"><value>Opcional</value></data>
+  <data name="DevicesHeading.Text" xml:space="preserve"><value>Dispositivos y seguridad</value></data>
+  <data name="DevicesCaption.Text" xml:space="preserve"><value>Habilitar dispositivos del host, el portapapeles o las impresoras aumenta el uso compartido con el host.</value></data>
+  <data name="StartupCommandTextBox.Header" xml:space="preserve"><value>Comando de inicio (se ejecuta dentro del espacio aislado al iniciar sesión)</value></data>
+  <data name="StartupCommandTextBox.PlaceholderText" xml:space="preserve"><value>Opcional</value></data>
+  <data name="ScriptModeCheckBox.Content" xml:space="preserve"><value>Empaquetar como script: cada línea se ejecuta en orden desde una carpeta asignada de solo lectura</value></data>
+  <data name="MappedFoldersHeading.Text" xml:space="preserve"><value>Carpetas asignadas</value></data>
+  <data name="MappedFoldersCaption.Text" xml:space="preserve"><value>Las carpetas asignadas comparten datos del host con Windows Sandbox. Manténlas de solo lectura salvo que el acceso de escritura sea necesario.</value></data>
+  <data name="HostFolderTextBox.Header" xml:space="preserve"><value>Carpeta del host</value></data>
+  <data name="MissingHostFolderText.Text" xml:space="preserve"><value>Esta carpeta del host no existe. Es posible que Windows Sandbox no pueda iniciarse.</value></data>
+  <data name="SandboxFolderTextBox.Header" xml:space="preserve"><value>Carpeta del espacio aislado (opcional)</value></data>
+  <data name="ReadOnlyCheckBox.Content" xml:space="preserve"><value>Solo lectura</value></data>
+  <data name="RemoveFolderButton.Content" xml:space="preserve"><value>Quitar</value></data>
+  <data name="AddFolderButton.Content" xml:space="preserve"><value>Agregar carpeta asignada</value></data>
+  <data name="WritableMappingWarning.Text" xml:space="preserve"><value>Las asignaciones de escritura permiten que el espacio aislado modifique archivos del host.</value></data>
+  <data name="AcknowledgeWritableMapping.Content" xml:space="preserve"><value>Entiendo que las asignaciones de escritura permiten que el espacio aislado modifique archivos del host.</value></data>
+
+  <!-- Shared tri-state option labels (x:Bind to dialog properties) -->
+  <data name="TriStateUnspecified" xml:space="preserve"><value>Sin especificar</value></data>
+  <data name="TriStateDefault" xml:space="preserve"><value>Predeterminado</value></data>
+  <data name="TriStateEnabled" xml:space="preserve"><value>Habilitado</value></data>
+  <data name="TriStateDisabled" xml:space="preserve"><value>Deshabilitado</value></data>
+
+  <!-- EditProfileDialog.xaml.cs / EditProfileViewModel -->
+  <data name="MappedFoldersFeatureLabel" xml:space="preserve"><value>Carpetas asignadas</value></data>
+  <data name="WritableMappedFoldersFeatureLabel" xml:space="preserve"><value>Carpetas asignadas de escritura</value></data>
+  <data name="MappedFolderEnvVarsFeatureLabel" xml:space="preserve"><value>Variables de entorno en rutas del host</value></data>
+  <data name="AvailabilityCaptionFormat" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="MemoryNotIntegerError" xml:space="preserve"><value>La memoria debe ser un número entero de megabytes.</value></data>
+  <data name="WritableAckRequiredError" xml:space="preserve"><value>Confirma que las asignaciones de escritura permiten que el espacio aislado modifique archivos del host antes de guardar.</value></data>
+  <data name="ValidationCorrectError" xml:space="preserve"><value>Corrige los valores del perfil.</value></data>
+  <data name="ValidationMessageFormat" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="ValidationWarningsNote" xml:space="preserve"><value>{0} advertencia(s): {1}</value></data>
+  <data name="PolicyOverridesNote" xml:space="preserve"><value>directivas del host anuladas: {0}</value></data>
+  <data name="NonAsciiScriptNote" xml:space="preserve"><value>el script contiene caracteres no ASCII que cmd.exe podría decodificar incorrectamente</value></data>
+  <data name="StatusProfileSaved" xml:space="preserve"><value>'{0}' guardado.</value></data>
+  <data name="StatusProfileSavedWithNotes" xml:space="preserve"><value>'{0}' guardado con {1}.</value></data>
+  <data name="StatusProfileSaveError" xml:space="preserve"><value>No se pudo guardar el perfil: {0}</value></data>
+  <data name="ValidationOk" xml:space="preserve"><value>La configuración es válida.</value></data>
+  <data name="ValidationNameRequired" xml:space="preserve"><value>Se requiere un nombre de perfil.</value></data>
+  <data name="ValidationNameTooLong" xml:space="preserve"><value>El nombre del perfil no puede superar los 120 caracteres.</value></data>
+  <data name="ValidationDescTooLong" xml:space="preserve"><value>La descripción del perfil no puede superar los 500 caracteres.</value></data>
+
+  <!-- SessionsDialog.xaml -->
+  <data name="SessionsDialog.Title" xml:space="preserve"><value>Sesiones de espacio aislado</value></data>
+  <data name="SessionsDialog.CloseButtonText" xml:space="preserve"><value>Cerrar</value></data>
+  <data name="SessionsRefreshButton.Content" xml:space="preserve"><value>Actualizar</value></data>
+  <data name="ConnectButton.Content" xml:space="preserve"><value>Conectar</value></data>
+  <data name="ExecButton.Content" xml:space="preserve"><value>Ejecutar…</value></data>
+  <data name="IpButton.Content" xml:space="preserve"><value>IP</value></data>
+  <data name="ShareButton.Content" xml:space="preserve"><value>Compartir…</value></data>
+  <data name="StopButton.Content" xml:space="preserve"><value>Detener</value></data>
+
+  <!-- SessionsDialog.xaml.cs -->
+  <data name="SessionsUnsupported" xml:space="preserve"><value>La CLI wsb requiere Windows 11 24H2 o posterior con Windows Sandbox habilitado.</value></data>
+  <data name="SessionsEmpty" xml:space="preserve"><value>No hay sesiones de espacio aislado en ejecución.</value></data>
+  <data name="ExecCommandHeader" xml:space="preserve"><value>Comando</value></data>
+  <data name="ExecCommandPlaceholder" xml:space="preserve"><value>app.exe o un comando integrado</value></data>
+  <data name="ExecRunAsHeader" xml:space="preserve"><value>Ejecutar como</value></data>
+  <data name="ExecRunAsSystem" xml:space="preserve"><value>System</value></data>
+  <data name="ExecRunAsExistingLogin" xml:space="preserve"><value>Inicio de sesión existente (requiere una sesión conectada)</value></data>
+  <data name="ExecWorkDirHeader" xml:space="preserve"><value>Directorio de trabajo (opcional)</value></data>
+  <data name="ExecNote" xml:space="preserve"><value>No se puede capturar la salida del comando; solo se devuelve el código de salida.</value></data>
+  <data name="ExecRunButton" xml:space="preserve"><value>Ejecutar</value></data>
+  <data name="SessionOperationBusy" xml:space="preserve"><value>Hay otra operación en curso.</value></data>
+  <data name="ExecCommandRequired" xml:space="preserve"><value>Escribe un comando para ejecutar.</value></data>
+  <data name="ExecExitCodeMessage" xml:space="preserve"><value>El comando finalizó con el código de salida {0}.</value></data>
+  <data name="ExecFailedMessage" xml:space="preserve"><value>No se pudo ejecutar el comando.</value></data>
+  <data name="IpNoneReported" xml:space="preserve"><value>sin IP</value></data>
+  <data name="ShareHostFolderHeader" xml:space="preserve"><value>Carpeta del host</value></data>
+  <data name="ShareBrowseButton" xml:space="preserve"><value>Examinar…</value></data>
+  <data name="ShareSandboxFolderHeader" xml:space="preserve"><value>Carpeta del espacio aislado</value></data>
+  <data name="ShareAllowWrite" xml:space="preserve"><value>Permitir que el espacio aislado escriba en esta carpeta</value></data>
+  <data name="ShareButtonText" xml:space="preserve"><value>Compartir</value></data>
+  <data name="SharePickerError" xml:space="preserve"><value>No se pudo abrir el selector de carpetas: {0}</value></data>
+  <data name="ShareBothRequired" xml:space="preserve"><value>Escribe tanto una carpeta del host como una del espacio aislado.</value></data>
+  <data name="ShareHostMissing" xml:space="preserve"><value>La carpeta del host '{0}' no existe.</value></data>
+  <data name="ShareSuccess" xml:space="preserve"><value>'{0}' compartida en '{1}'.</value></data>
+  <data name="ShareFailed" xml:space="preserve"><value>No se pudo compartir la carpeta.</value></data>
+  <data name="SessionConnectFailed" xml:space="preserve"><value>No se pudo conectar a la sesión.</value></data>
+  <data name="SessionStopFailed" xml:space="preserve"><value>No se pudo detener la sesión.</value></data>
+  <data name="SessionStateRunningUptime" xml:space="preserve"><value>En ejecución · activa {0}</value></data>
+  <data name="SessionStateRunning" xml:space="preserve"><value>En ejecución</value></data>
+  <data name="SessionStateStopped" xml:space="preserve"><value>Detenida</value></data>
+  <data name="SessionStateUnknown" xml:space="preserve"><value>Estado desconocido</value></data>
 </root>
