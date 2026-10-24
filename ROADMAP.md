@@ -76,9 +76,10 @@ Status: Implemented and locally build- and visually verified; native title-bar i
 
 ## Phase 8 — Update discovery
 
-- Add an in-app check for updates against GitHub Releases that prompts and opens the release page in a browser.
-- Never silently overwrite a running executable.
-- Consider replacement updates only after signed and integrity-checked update handling is designed and verified.
+- Status: Implemented (discovery only). `GitHubUpdateChecker` in Core queries `/repos/PAumedes/SandboxStudio/releases/latest` against the assembly informational version (prerelease/build suffixes normalized); the dashboard shows an "Update available" InfoBar with the raw tag and a **View release** button that opens the HTTPS release page in the browser — non-HTTPS feed URLs are rejected at the checker and again before `ShellExecute`. Check failures stay silent (best-effort, never blocks the dashboard).
+- ~~Add an in-app check for updates against GitHub Releases that prompts and opens the release page in a browser~~ — implemented.
+- Never silently overwrite a running executable — upheld: the checker is discovery-only and downloads nothing.
+- Consider replacement updates only after signed and integrity-checked update handling is designed and verified — still open.
 
 ## Evaluated alternatives
 

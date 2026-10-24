@@ -267,4 +267,9 @@
   <data name="CoreLauncherFailed" xml:space="preserve"><value>Failed to launch Windows Sandbox.</value></data>
   <data name="CoreLauncherException" xml:space="preserve"><value>Failed to launch Windows Sandbox: {0}</value></data>
   <data name="CoreLauncherNotInstalled" xml:space="preserve"><value>Windows Sandbox is not installed or enabled on this host.</value></data>
+  <data name="CoreUpdateCheckFailed" xml:space="preserve"><value>Update check failed: {0}</value></data>
+  <data name="UpdateInfoBar.Title" xml:space="preserve"><value>Update available</value></data>
+  <data name="UpdateAvailableMessage" xml:space="preserve"><value>SandboxStudio {0} is available on GitHub.</value></data>
+  <data name="UpdateViewButton.Content" xml:space="preserve"><value>View release</value></data>
+  <data name="UpdateViewError" xml:space="preserve"><value>Could not open the release page: {0}</value></data>
 </root>

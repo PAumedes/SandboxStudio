@@ -8,6 +8,7 @@ using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Sessions;
 using SandboxStudio.Core.Storage;
+using SandboxStudio.Core.Updates;
 using SandboxStudio.Core.Validation;
 using SandboxStudio.UI.ViewModels;
 
@@ -67,6 +68,7 @@ public sealed partial class App : Application
                 services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
                 services.AddSingleton<IHostCapabilities, HostCapabilities>();
                 services.AddSingleton<ISandboxSessionManager, WsbSessionManager>();
+                services.AddSingleton<IUpdateChecker, GitHubUpdateChecker>();
 
                 // ViewModels
                 services.AddTransient<MainViewModel>();

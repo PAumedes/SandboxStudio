@@ -15,6 +15,7 @@ graph TD
         Execution[ISandboxLauncher: SandboxLauncher]
         Capabilities[IHostCapabilities: HostCapabilities]
         Sessions[ISandboxSessionManager: WsbSessionManager]
+        Updates[IUpdateChecker: GitHubUpdateChecker]
     end
 
     Execution --> OS[Windows Sandbox Subsystem]
@@ -33,6 +34,8 @@ Pure domain library with zero UI dependencies:
 * **`Capabilities`**: Computes effective per-feature availability from host OS build and Windows Sandbox policy registry values, and reports overall Sandbox host status.
 * **`Sessions`**: Discovers and controls live sandbox sessions through the `wsb` CLI (Windows 11 24H2+): starts sessions from inline configuration XML, lists them from `--raw` JSON output, executes commands inside them (exit code only — output cannot be captured), reports their IP addresses, shares host folders into them, and stops or connects to them by sandbox ID.
 * **`Scripts`**: Packages multi-line logon commands into `.cmd` files under `%LocalAppData%/SandboxStudio/Scripts`, delivered to the sandbox through a managed read-only mapped folder at `C:\SandboxStudio\Scripts` — Microsoft's recommended pattern for multi-step setup.
+* **`Updates`**: Discovery-only release check — `GitHubUpdateChecker` compares the assembly informational version against the repository's latest GitHub release tag and reports an HTTPS release URL for the UI to surface. It never downloads or installs anything; only HTTPS release links are propagated.
+* **`Localization`**: `MessageKeys` constants identifying user-facing text composed in Core; records carry optional `MessageKey`/`ErrorKey` + format args alongside their English fallback so hosts can localize capability reasons, policy overrides, validation messages, and CLI failures.
 
 ### 2. `SandboxStudio.UI` (Target: `net10.0-windows10.0.19041.0`)
 Presentation layer powered by Windows App SDK and WinUI 3:

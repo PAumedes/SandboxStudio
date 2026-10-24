@@ -96,4 +96,7 @@ public static class MessageKeys
 
     /// <summary>"Windows Sandbox is not installed or enabled on this host."</summary>
     public const string LauncherNotInstalled = "CoreLauncherNotInstalled";
+
+    /// <summary>"Update check failed: {0}"</summary>
+    public const string UpdateCheckFailed = "CoreUpdateCheckFailed";
 }

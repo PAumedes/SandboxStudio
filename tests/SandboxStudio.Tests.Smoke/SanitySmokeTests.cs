@@ -8,6 +8,7 @@ using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Sessions;
 using SandboxStudio.Core.Storage;
+using SandboxStudio.Core.Updates;
 using SandboxStudio.Core.Validation;
 using Xunit;
 
@@ -71,6 +72,7 @@ public sealed class SanitySmokeTests : IDisposable
         services.AddSingleton<IHostCapabilities, HostCapabilities>();
         services.AddSingleton<CuratedPresets>();
         services.AddSingleton<ISandboxSessionManager, WsbSessionManager>();
+        services.AddSingleton<IUpdateChecker, GitHubUpdateChecker>();
 
         using var provider = services.BuildServiceProvider();
 
@@ -87,6 +89,7 @@ public sealed class SanitySmokeTests : IDisposable
         provider.GetRequiredService<ILogonScriptService>().Should().NotBeNull();
         provider.GetRequiredService<IAppSettingsStore>().Should().NotBeNull();
         provider.GetRequiredService<ISandboxSessionManager>().Should().NotBeNull();
+        provider.GetRequiredService<IUpdateChecker>().Should().NotBeNull();
     }
 
     [Fact]

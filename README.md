@@ -35,6 +35,7 @@ SandboxStudio is a .NET 10 and WinUI 3 source project for managing Windows Sandb
 - The **Sessions** dialog lists live sandbox sessions reported by the `wsb` CLI (Windows 11 24H2+) with status and uptime, and can connect to, stop, run commands inside, query the IP of, or share a host folder into a session.
 - All currently modeled `.wsb` settings are exposed above.
 - The app follows the operating-system light/dark theme, and all UI chrome is localized in English and Spanish; the **Language** menu stores an override that applies on the next launch. Host-capability reasons, policy-override text, validator messages, and `wsb` CLI errors are also localized — Core emits structured message keys that the UI translates, while raw `wsb.exe` stderr text stays in its original language inside the localized wrapper.
+- An **Update available** banner appears when GitHub Releases reports a newer tag than the running build; **View release** opens the release page in the browser. Discovery only — nothing is downloaded or installed.
 
 The dashboard has been opened locally and displayed the seeded presets. Windows Sandbox launching, packaged-app runtime, and packaging on a clean host have not been verified. The workflow below produces a packaging preview only; it does not publish a GitHub release.
 

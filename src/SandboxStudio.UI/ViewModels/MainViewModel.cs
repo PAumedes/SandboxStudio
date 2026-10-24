@@ -6,6 +6,7 @@ using SandboxStudio.Core.Execution;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Storage;
+using SandboxStudio.Core.Updates;
 
 namespace SandboxStudio.UI.ViewModels;
 
@@ -18,6 +19,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly ILogonScriptService? _scripts;
     private readonly ISandboxLauncher _launcher;
     private readonly IHostCapabilities _capabilities;
+    private readonly IUpdateChecker _updateChecker;
     private readonly List<SandboxProfile> _allProfiles = new();
 
     /// <summary>
@@ -80,17 +82,36 @@ public sealed partial class MainViewModel : ObservableObject
     public partial string? SandboxUnavailableTitle { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether a newer release was found.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool UpdateAvailable { get; set; }
+
+    /// <summary>
+    /// Gets or sets the localized update banner text.
+    /// </summary>
+    [ObservableProperty]
+    public partial string? UpdateMessage { get; set; }
+
+    /// <summary>
+    /// Gets or sets the release page to open from the update banner.
+    /// </summary>
+    public Uri? UpdateReleaseUri { get; private set; }
+
+    /// <summary>
     /// Initializes a new instance of <see cref="MainViewModel"/>.
     /// </summary>
     public MainViewModel(
         IProfileRepository repository,
         ISandboxLauncher launcher,
         IHostCapabilities capabilities,
+        IUpdateChecker updateChecker,
         ILogonScriptService? scripts = null)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _launcher = launcher ?? throw new ArgumentNullException(nameof(launcher));
         _capabilities = capabilities ?? throw new ArgumentNullException(nameof(capabilities));
+        _updateChecker = updateChecker ?? throw new ArgumentNullException(nameof(updateChecker));
         _scripts = scripts;
 
         var status = capabilities.SandboxStatus;
@@ -115,6 +136,34 @@ public sealed partial class MainViewModel : ObservableObject
             HostSandboxStatus.VirtualizationDisabled => Localizer.Get("SandboxStatusVirtDisabledShort"),
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Checks the release feed for a newer version. Runs silently — only an
+    /// available update surfaces a banner; failures are swallowed to avoid
+    /// interrupting the dashboard for a best-effort check.
+    /// </summary>
+    [RelayCommand]
+    public async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            var result = await _updateChecker.CheckAsync();
+            if (result.Status == UpdateCheckStatus.Available &&
+                result.LatestVersion is { } latest &&
+                result.ReleaseUri is { } uri)
+            {
+                UpdateReleaseUri = uri;
+                // Prefer the raw tag — it carries prerelease/suffix detail the
+                // parsed Version drops (e.g. 0.2.0-rc1 shown as "0.2.0").
+                UpdateMessage = Localizer.Format("UpdateAvailableMessage", result.LatestTag ?? latest.ToString());
+                UpdateAvailable = true;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Best-effort only; never surface update-check failures to the dashboard.
+        }
     }
 
     /// <summary>

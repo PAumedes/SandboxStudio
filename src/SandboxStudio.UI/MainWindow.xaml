@@ -104,6 +104,18 @@
                     IsOpen="False"
                     Severity="Informational" />
 
+                <!-- New-release banner; only shown when an update exists -->
+                <InfoBar
+                    x:Name="UpdateInfoBar"
+                    x:Uid="UpdateInfoBar"
+                    IsOpen="{x:Bind ViewModel.UpdateAvailable, Mode=OneWay}"
+                    Severity="Informational"
+                    Message="{x:Bind ViewModel.UpdateMessage, Mode=OneWay}">
+                    <InfoBar.ActionButton>
+                        <Button x:Uid="UpdateViewButton" Click="OnViewUpdateClicked" />
+                    </InfoBar.ActionButton>
+                </InfoBar>
+
                 <!-- Empty state when the tag filter matches nothing -->
                 <InfoBar
                     x:Name="NoMatchingProfilesInfoBar"

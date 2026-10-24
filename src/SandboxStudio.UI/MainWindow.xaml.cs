@@ -66,7 +66,8 @@ public sealed partial class MainWindow : Window
 
         SandboxEngineStatus.Text = ViewModel.SandboxStatusMessage ?? string.Empty;
 
-        // Auto-load profiles on startup
+        // Auto-load profiles on startup; update check runs silently alongside.
+        _ = ViewModel.CheckForUpdatesAsync();
         _ = ViewModel.LoadProfilesAsync();
     }
 
@@ -320,6 +321,25 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             ViewModel.StatusMessage = Localizer.Format("StatusImportFailed", ex.Message);
+        }
+    }
+
+    private void OnViewUpdateClicked(object sender, RoutedEventArgs e)
+    {
+        // Last gate before ShellExecute — only HTTPS release links open.
+        if (ViewModel.UpdateReleaseUri is not { } uri || uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = Localizer.Format("UpdateViewError", ex.Message);
         }
     }
 
