@@ -52,6 +52,12 @@ public static class MessageKeys
     /// <summary>"HostFolder directory '{0}' does not exist on the host. Windows Sandbox will fail to start unless created."</summary>
     public const string HostFolderMissing = "CoreHostFolderMissing";
 
+    /// <summary>"HostFolder path '{0}' uses environment variables, which Windows Sandbox expands only on build {1} or later."</summary>
+    public const string HostFolderEnvVarsUnsupported = "CoreHostFolderEnvVarsUnsupported";
+
+    /// <summary>"HostFolder path '{0}' references an environment variable that is not defined on this host."</summary>
+    public const string HostFolderEnvVarUnresolved = "CoreHostFolderEnvVarUnresolved";
+
     /// <summary>"Duplicate SandboxFolder destination detected: '{0}'."</summary>
     public const string SandboxFolderDuplicate = "CoreSandboxFolderDuplicate";
 

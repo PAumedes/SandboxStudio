@@ -5,6 +5,12 @@ using SandboxStudio.Core.Models;
 namespace SandboxStudio.Core.Scripts;
 
 /// <inheritdoc cref="ILogonScriptService"/>
+/// <remarks>
+/// Each profile's script lives in its own host directory
+/// (<c>Scripts\&lt;id&gt;\&lt;id&gt;.cmd</c>) and only that directory is mounted, so a
+/// sandbox never sees another profile's setup. The sandbox-side path stays
+/// <c>C:\SandboxStudio\Scripts\&lt;id&gt;.cmd</c> for every profile.
+/// </remarks>
 public sealed partial class LogonScriptService : ILogonScriptService
 {
     /// <summary>
@@ -55,20 +61,27 @@ public sealed partial class LogonScriptService : ILogonScriptService
         commands.Any(command => command.Any(c => c > 0x7F));
 
     /// <inheritdoc/>
-    public async Task ApplyAsync(
-        WsbConfiguration configuration,
+    public void Configure(WsbConfiguration configuration, Guid profileId)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        EnsureManagedMapping(configuration, profileId);
+        configuration.LogonCommand = new WsbLogonCommand { Command = GetSandboxCommand(profileId) };
+    }
+
+    /// <inheritdoc/>
+    public async Task WriteScriptAsync(
         Guid profileId,
         IReadOnlyList<string> commands,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(commands);
         if (commands.Count == 0)
         {
             throw new ArgumentException("At least one command is required to build a logon script.", nameof(commands));
         }
 
-        Directory.CreateDirectory(_scriptsDirectory);
+        Directory.CreateDirectory(GetProfileScriptDirectory(profileId));
         var script = new StringBuilder("@echo off");
         foreach (var command in commands)
         {
@@ -76,9 +89,19 @@ public sealed partial class LogonScriptService : ILogonScriptService
         }
 
         await File.WriteAllTextAsync(GetScriptPath(profileId), script.Append("\r\n").ToString(), Utf8NoBom, cancellationToken);
+    }
 
-        EnsureManagedMapping(configuration);
-        configuration.LogonCommand = new WsbLogonCommand { Command = GetSandboxCommand(profileId) };
+    /// <inheritdoc/>
+    public async Task ApplyAsync(
+        WsbConfiguration configuration,
+        Guid profileId,
+        IReadOnlyList<string> commands,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        await WriteScriptAsync(profileId, commands, cancellationToken);
+        Configure(configuration, profileId);
     }
 
     /// <inheritdoc/>
@@ -107,7 +130,7 @@ public sealed partial class LogonScriptService : ILogonScriptService
     /// <inheritdoc/>
     public Task DeleteAsync(Guid profileId, CancellationToken cancellationToken = default)
     {
-        DeleteScriptFile(profileId);
+        DeleteScriptFiles(profileId);
         return Task.CompletedTask;
     }
 
@@ -126,18 +149,23 @@ public sealed partial class LogonScriptService : ILogonScriptService
             return Task.CompletedTask;
         }
 
-        var sourcePath = Path.Combine(_scriptsDirectory, $"{match.Groups[1].Value}.cmd");
-        if (!File.Exists(sourcePath))
+        var sourceId = match.Groups[1].Value;
+        var sourcePath = new[]
+            {
+                Path.Combine(_scriptsDirectory, sourceId, $"{sourceId}.cmd"),
+                Path.Combine(_scriptsDirectory, $"{sourceId}.cmd")
+            }
+            .FirstOrDefault(File.Exists);
+        if (sourcePath is null)
         {
             // The referenced script does not exist on this host; leave the command
             // as imported rather than fabricating a script.
             return Task.CompletedTask;
         }
 
-        Directory.CreateDirectory(_scriptsDirectory);
+        Directory.CreateDirectory(GetProfileScriptDirectory(newProfileId));
         File.Copy(sourcePath, GetScriptPath(newProfileId), overwrite: true);
-        EnsureManagedMapping(configuration);
-        configuration.LogonCommand = new WsbLogonCommand { Command = GetSandboxCommand(newProfileId) };
+        Configure(configuration, newProfileId);
         return Task.CompletedTask;
     }
 
@@ -150,6 +178,15 @@ public sealed partial class LogonScriptService : ILogonScriptService
             return;
         }
 
+        foreach (var directory in Directory.EnumerateDirectories(_scriptsDirectory))
+        {
+            if (Guid.TryParseExact(Path.GetFileName(directory), "N", out var id) && !liveProfileIds.Contains(id))
+            {
+                TryDelete(() => Directory.Delete(directory, recursive: true));
+            }
+        }
+
+        // Legacy flat-layout scripts (pre per-profile directories).
         foreach (var file in Directory.EnumerateFiles(_scriptsDirectory, "*.cmd"))
         {
             var stem = Path.GetFileNameWithoutExtension(file);
@@ -158,26 +195,64 @@ public sealed partial class LogonScriptService : ILogonScriptService
                 continue;
             }
 
+            TryDelete(() => File.Delete(file));
+        }
+
+        static void TryDelete(Action delete)
+        {
             try
             {
-                File.Delete(file);
+                delete();
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                // Best-effort sweep; a locked or read-only file stays behind.
+                // Best-effort sweep; a locked or read-only entry stays behind.
             }
         }
     }
 
-    private void EnsureManagedMapping(WsbConfiguration configuration)
+    /// <inheritdoc/>
+    public bool MigrateLegacyLayout(WsbConfiguration configuration, Guid profileId)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        if (!IsScriptBacked(configuration, profileId))
+        {
+            return false;
+        }
+
+        var profileDirectory = GetProfileScriptDirectory(profileId);
+        var managed = configuration.MappedFolders?.FirstOrDefault(IsManagedMapping);
+        if (managed is not null &&
+            managed.IsReadOnly &&
+            string.Equals(Path.TrimEndingDirectorySeparator(managed.HostFolder), profileDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var legacyPath = GetLegacyScriptPath(profileId);
+        var scriptPath = GetScriptPath(profileId);
+        if (File.Exists(legacyPath) && !File.Exists(scriptPath))
+        {
+            Directory.CreateDirectory(profileDirectory);
+            File.Move(legacyPath, scriptPath);
+        }
+
+        // Narrow the mount even when no script is found, so the sandbox can no
+        // longer read the shared directory.
+        EnsureManagedMapping(configuration, profileId);
+        return true;
+    }
+
+    private void EnsureManagedMapping(WsbConfiguration configuration, Guid profileId)
     {
         configuration.MappedFolders ??= new List<WsbMappedFolder>();
+        var hostFolder = GetProfileScriptDirectory(profileId);
         var managed = configuration.MappedFolders.FirstOrDefault(IsManagedMapping);
         if (managed is null)
         {
             configuration.MappedFolders.Add(new WsbMappedFolder
             {
-                HostFolder = _scriptsDirectory,
+                HostFolder = hostFolder,
                 SandboxFolder = SandboxScriptDirectory,
                 IsReadOnly = true
             });
@@ -185,22 +260,34 @@ public sealed partial class LogonScriptService : ILogonScriptService
         }
 
         // Repair drift from the editable folder row (or an import that rewrote paths).
-        managed.HostFolder = _scriptsDirectory;
+        managed.HostFolder = hostFolder;
         managed.IsReadOnly = true;
     }
 
+    private string GetProfileScriptDirectory(Guid profileId) =>
+        Path.Combine(_scriptsDirectory, $"{profileId:N}");
+
     private string GetScriptPath(Guid profileId) =>
+        Path.Combine(GetProfileScriptDirectory(profileId), $"{profileId:N}.cmd");
+
+    private string GetLegacyScriptPath(Guid profileId) =>
         Path.Combine(_scriptsDirectory, $"{profileId:N}.cmd");
 
     private static string GetSandboxCommand(Guid profileId) =>
         $"cmd.exe /c \"{SandboxScriptDirectory}\\{profileId:N}.cmd\"";
 
-    private void DeleteScriptFile(Guid profileId)
+    private void DeleteScriptFiles(Guid profileId)
     {
-        var scriptPath = GetScriptPath(profileId);
-        if (File.Exists(scriptPath))
+        var profileDirectory = GetProfileScriptDirectory(profileId);
+        if (Directory.Exists(profileDirectory))
         {
-            File.Delete(scriptPath);
+            Directory.Delete(profileDirectory, recursive: true);
+        }
+
+        var legacyPath = GetLegacyScriptPath(profileId);
+        if (File.Exists(legacyPath))
+        {
+            File.Delete(legacyPath);
         }
     }
 }

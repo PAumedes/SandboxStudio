@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Models;
 
@@ -6,8 +9,23 @@ namespace SandboxStudio.Core.Validation;
 /// <summary>
 /// Validates Windows Sandbox configurations against Microsoft specifications and best practices.
 /// </summary>
-public sealed class WsbValidator : IWsbValidator
+public sealed partial class WsbValidator : IWsbValidator
 {
+    [GeneratedRegex(@"%[^%\\]+%", RegexOptions.CultureInvariant)]
+    private static partial Regex EnvironmentVariablePattern();
+
+    private readonly IHostCapabilities? _capabilities;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="WsbValidator"/>.
+    /// </summary>
+    /// <param name="capabilities">Optional host capability probe; when provided, host paths that use
+    /// environment variables warn on builds that cannot expand them.</param>
+    public WsbValidator(IHostCapabilities? capabilities = null)
+    {
+        _capabilities = capabilities;
+    }
+
     private static readonly HashSet<string> ValidTriStates = new(StringComparer.Ordinal)
     {
         "Default",
@@ -91,7 +109,7 @@ public sealed class WsbValidator : IWsbValidator
         }
     }
 
-    private static void ValidateMappedFolders(List<WsbMappedFolder> folders, ValidationResult result)
+    private void ValidateMappedFolders(List<WsbMappedFolder> folders, ValidationResult result)
     {
         var seenHostFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenSandboxFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -107,20 +125,41 @@ public sealed class WsbValidator : IWsbValidator
             }
             else
             {
+                // Windows Sandbox expands host environment variables (Windows 11 23H2+),
+                // so path checks apply to the expanded form.
+                var usesEnvironmentVariables = EnvironmentVariablePattern().IsMatch(folder.HostFolder);
+                var hostFolder = usesEnvironmentVariables
+                    ? Environment.ExpandEnvironmentVariables(folder.HostFolder)
+                    : folder.HostFolder;
+                if (usesEnvironmentVariables &&
+                    _capabilities?.GetAvailability(SandboxFeature.MappedFolderEnvironmentVariables) is { Status: FeatureStatus.RequiresNewerWindows } availability)
+                {
+                    result.AddWarning(
+                        $"{prefix}.HostFolder",
+                        $"HostFolder path '{folder.HostFolder}' uses environment variables, which Windows Sandbox expands only on build {availability.RequiredBuild} or later.",
+                        MessageKeys.HostFolderEnvVarsUnsupported,
+                        [folder.HostFolder, availability.RequiredBuild?.ToString(CultureInfo.InvariantCulture)]);
+                }
+
                 var invalidChars = Path.GetInvalidPathChars();
-                if (folder.HostFolder.IndexOfAny(invalidChars) >= 0 || folder.HostFolder.IndexOfAny(WildcardChars) >= 0)
+                if (hostFolder.IndexOfAny(invalidChars) >= 0 || hostFolder.IndexOfAny(WildcardChars) >= 0)
                 {
                     result.AddError($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' contains invalid path characters.", MessageKeys.PathInvalidChars, ["HostFolder", folder.HostFolder]);
                 }
-                else if (!Path.IsPathFullyQualified(folder.HostFolder))
+                else if (usesEnvironmentVariables && EnvironmentVariablePattern().IsMatch(hostFolder))
+                {
+                    // Undefined here, but the profile may target another machine.
+                    result.AddWarning($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' references an environment variable that is not defined on this host.", MessageKeys.HostFolderEnvVarUnresolved, [folder.HostFolder]);
+                }
+                else if (!Path.IsPathFullyQualified(hostFolder))
                 {
                     result.AddError($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' must be a fully qualified absolute path.", MessageKeys.PathNotQualified, ["HostFolder", folder.HostFolder]);
                 }
-                else if (!seenHostFolders.Add(folder.HostFolder))
+                else if (!seenHostFolders.Add(hostFolder))
                 {
                     result.AddError($"{prefix}.HostFolder", $"Duplicate HostFolder mapping detected: '{folder.HostFolder}'.", MessageKeys.HostFolderDuplicate, [folder.HostFolder]);
                 }
-                else if (!Directory.Exists(folder.HostFolder))
+                else if (!Directory.Exists(hostFolder))
                 {
                     result.AddWarning($"{prefix}.HostFolder", $"HostFolder directory '{folder.HostFolder}' does not exist on the host. Windows Sandbox will fail to start unless created.", MessageKeys.HostFolderMissing, [folder.HostFolder]);
                 }

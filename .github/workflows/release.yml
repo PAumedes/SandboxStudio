@@ -32,6 +32,22 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # Same gate as CI: nothing is packaged or released from a red build.
+      - name: Restore Dependencies
+        run: dotnet restore SandboxStudio.sln
+
+      - name: Build Solution
+        run: dotnet build SandboxStudio.sln --configuration Release --no-restore
+
+      - name: Execute Unit Tests
+        run: dotnet test tests/SandboxStudio.Tests.Unit/SandboxStudio.Tests.Unit.csproj --configuration Release --no-build
+
+      - name: Execute Integration Tests
+        run: dotnet test tests/SandboxStudio.Tests.Integration/SandboxStudio.Tests.Integration.csproj --configuration Release --no-build
+
+      - name: Execute Smoke Tests
+        run: dotnet test tests/SandboxStudio.Tests.Smoke/SandboxStudio.Tests.Smoke.csproj --configuration Release --no-build
+
       - name: Publish WinUI3 Application
         shell: pwsh
         env:

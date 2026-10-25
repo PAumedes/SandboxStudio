@@ -252,6 +252,8 @@
   <data name="CorePathNotQualified" xml:space="preserve"><value>La ruta '{1}' de {0} debe ser una ruta absoluta completa.</value></data>
   <data name="CoreHostFolderDuplicate" xml:space="preserve"><value>Se detectó una asignación de HostFolder duplicada: '{0}'.</value></data>
   <data name="CoreHostFolderMissing" xml:space="preserve"><value>El directorio '{0}' de HostFolder no existe en el host. Windows Sandbox no se iniciará a menos que se cree.</value></data>
+  <data name="CoreHostFolderEnvVarsUnsupported" xml:space="preserve"><value>La ruta '{0}' de HostFolder usa variables de entorno, que Windows Sandbox solo expande en la compilación {1} o posterior.</value></data>
+  <data name="CoreHostFolderEnvVarUnresolved" xml:space="preserve"><value>La ruta '{0}' de HostFolder hace referencia a una variable de entorno que no está definida en este host.</value></data>
   <data name="CoreSandboxFolderDuplicate" xml:space="preserve"><value>Se detectó un destino de SandboxFolder duplicado: '{0}'.</value></data>
   <data name="CoreReadOnlyInvalid" xml:space="preserve"><value>El valor de ReadOnly debe ser 'true' o 'false'; se encontró '{0}'.</value></data>
   <data name="CoreLogonTooLong" xml:space="preserve"><value>La longitud del comando de inicio de sesión ({0}) supera el límite máximo de Windows de {1} caracteres.</value></data>
