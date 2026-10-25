@@ -127,7 +127,7 @@ public sealed partial class EditProfileViewModel : ObservableObject
         {
             ValidationSummary = string.Join("; ", result.Messages
                 .Where(m => m.Severity == ValidationSeverity.Error)
-                .Select(m => Localizer.Format("ValidationMessageFormat", m.PropertyName, m.Message)));
+                .Select(m => Localizer.Format("ValidationMessageFormat", m.PropertyName, Localizer.Core(m.MessageKey, m.MessageArgs, m.Message))));
         }
         else
         {
@@ -140,6 +140,22 @@ public sealed partial class EditProfileViewModel : ObservableObject
     /// </summary>
     [RelayCommand]
     public async Task<bool> SaveAsync()
+    {
+        if (!ValidateForSave())
+        {
+            return false;
+        }
+
+        await _repository.SaveAsync(Profile);
+        return true;
+    }
+
+    /// <summary>
+    /// Runs every check <see cref="SaveAsync"/> applies (name, description, and
+    /// configuration) without persisting, normalizing the name on success.
+    /// </summary>
+    /// <returns><see langword="true"/> when the draft can be saved.</returns>
+    public bool ValidateForSave()
     {
         var name = Profile.Name?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(name))
@@ -165,12 +181,6 @@ public sealed partial class EditProfileViewModel : ObservableObject
 
         Profile.Name = name;
         Validate();
-        if (HasErrors)
-        {
-            return false;
-        }
-
-        await _repository.SaveAsync(Profile);
-        return true;
+        return !HasErrors;
     }
 }

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
 using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Execution;
@@ -20,11 +19,13 @@ namespace SandboxStudio.UI;
 public sealed partial class App : Application
 {
     private Window? _mainWindow;
+    private static ServiceProvider? _serviceProvider;
 
     /// <summary>
-    /// Gets the current application host providing dependency injection.
+    /// Gets the application's dependency-injection container.
     /// </summary>
-    public static IHost Host { get; private set; } = null!;
+    public static IServiceProvider Services => _serviceProvider
+        ?? throw new InvalidOperationException("Services are not available before the App is constructed.");
 
     /// <summary>
     /// Initializes the singleton application object.
@@ -52,32 +53,33 @@ public sealed partial class App : Application
 
         InitializeComponent();
 
-        Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
-            .ConfigureServices((_, services) =>
-            {
-                // Core Services
-                services.AddSingleton<IWsbSerializer, WsbSerializer>();
-                services.AddSingleton<IWsbValidator, WsbValidator>();
-                services.AddSingleton<WsbExportService>();
-                services.AddSingleton<WsbImportService>();
-                services.AddSingleton<ProfileDuplicationService>();
-                services.AddSingleton<ILogonScriptService, LogonScriptService>();
-                services.AddSingleton<IAppSettingsStore, JsonAppSettingsStore>();
-                services.AddSingleton<CuratedPresets>();
-                services.AddSingleton<IProfileRepository, JsonProfileRepository>();
-                services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
-                services.AddSingleton<IHostCapabilities, HostCapabilities>();
-                services.AddSingleton<ISandboxSessionManager, WsbSessionManager>();
-                services.AddSingleton<IUpdateChecker, GitHubUpdateChecker>();
+        // A plain container: the app runs no hosted services, so the generic host's
+        // configuration and logging stack would only add assemblies and startup work.
+        var services = new ServiceCollection();
 
-                // ViewModels
-                services.AddTransient<MainViewModel>();
-                services.AddTransient<EditProfileViewModel>();
+        // Core Services
+        services.AddSingleton<IWsbSerializer, WsbSerializer>();
+        services.AddSingleton<IWsbValidator, WsbValidator>();
+        services.AddSingleton<WsbExportService>();
+        services.AddSingleton<WsbImportService>();
+        services.AddSingleton<ProfileDuplicationService>();
+        services.AddSingleton<ILogonScriptService, LogonScriptService>();
+        services.AddSingleton<IAppSettingsStore, JsonAppSettingsStore>();
+        services.AddSingleton<CuratedPresets>();
+        services.AddSingleton<IProfileRepository, JsonProfileRepository>();
+        services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
+        services.AddSingleton<IHostCapabilities, HostCapabilities>();
+        services.AddSingleton<ISandboxSessionManager, WsbSessionManager>();
+        services.AddSingleton<IUpdateChecker, GitHubUpdateChecker>();
 
-                // Views
-                services.AddSingleton<MainWindow>();
-            })
-            .Build();
+        // ViewModels
+        services.AddTransient<MainViewModel>();
+        services.AddTransient<EditProfileViewModel>();
+
+        // Views
+        services.AddSingleton<MainWindow>();
+
+        _serviceProvider = services.BuildServiceProvider();
     }
 
     /// <summary>
@@ -85,8 +87,8 @@ public sealed partial class App : Application
     /// </summary>
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _mainWindow = Host.Services.GetRequiredService<MainWindow>();
-        _mainWindow.Closed += (_, _) => Host.Dispose();
+        _mainWindow = Services.GetRequiredService<MainWindow>();
+        _mainWindow.Closed += (_, _) => _serviceProvider?.Dispose();
         _mainWindow.Activate();
     }
 }

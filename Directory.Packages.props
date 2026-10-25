@@ -7,10 +7,8 @@
     <!-- MVVM & Community Toolkit -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 
-    <!-- Dependency Injection & Hosting -->
+    <!-- Dependency Injection -->
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.2" />
 
     <!-- WinUI 3 & Windows App SDK -->
     <PackageVersion Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />

@@ -28,9 +28,25 @@ public interface ILogonScriptService
     bool HasNonAsciiContent(IEnumerable<string> commands);
 
     /// <summary>
-    /// Writes the script file and rewires the configuration: a read-only mapped
-    /// folder for the managed script directory (added or repaired) plus a
+    /// Rewires the configuration without touching disk: a read-only mapped folder
+    /// for the profile's own script directory (added or repaired) plus a
     /// <see cref="WsbConfiguration.LogonCommand"/> that invokes the script.
+    /// </summary>
+    void Configure(WsbConfiguration configuration, Guid profileId);
+
+    /// <summary>
+    /// Writes the script file for <paramref name="profileId"/>. Callers that may
+    /// still abandon the edit should validate first, since the stored profile
+    /// runs whatever this file contains.
+    /// </summary>
+    Task WriteScriptAsync(
+        Guid profileId,
+        IReadOnlyList<string> commands,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Writes the script file and rewires the configuration
+    /// (<see cref="WriteScriptAsync"/> followed by <see cref="Configure"/>).
     /// </summary>
     Task ApplyAsync(
         WsbConfiguration configuration,
@@ -67,7 +83,15 @@ public interface ILogonScriptService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes script files whose profile id is not in <paramref name="liveProfileIds"/>.
+    /// Deletes script files and directories whose profile id is not in <paramref name="liveProfileIds"/>.
     /// </summary>
     void PruneOrphans(IReadOnlySet<Guid> liveProfileIds);
+
+    /// <summary>
+    /// Moves a script-backed profile off the legacy shared layout, where the
+    /// managed mount exposed every profile's script to every sandbox, onto its
+    /// own script directory.
+    /// </summary>
+    /// <returns><see langword="true"/> when the configuration changed and must be saved.</returns>
+    bool MigrateLegacyLayout(WsbConfiguration configuration, Guid profileId);
 }

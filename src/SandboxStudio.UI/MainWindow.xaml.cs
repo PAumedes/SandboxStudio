@@ -47,7 +47,7 @@ public sealed partial class MainWindow : Window
 
         // Reflect the stored language override in the picker; a stored tag outside
         // the shipped languages shows System default (the override is inert).
-        var currentTag = App.Host.Services.GetRequiredService<IAppSettingsStore>().Load().LanguageTag;
+        var currentTag = App.Services.GetRequiredService<IAppSettingsStore>().Load().LanguageTag;
         LanguageEnglishItem.IsChecked = string.Equals(currentTag, "en-US", StringComparison.OrdinalIgnoreCase);
         LanguageSpanishItem.IsChecked = string.Equals(currentTag, "es-ES", StringComparison.OrdinalIgnoreCase);
         LanguageSystemDefaultItem.IsChecked = !LanguageEnglishItem.IsChecked && !LanguageSpanishItem.IsChecked;
@@ -74,7 +74,7 @@ public sealed partial class MainWindow : Window
     /// <summary>
     /// Parameterless constructor for WinUI tooling / fallback resolution.
     /// </summary>
-    public MainWindow() : this(App.Host.Services.GetRequiredService<MainViewModel>())
+    public MainWindow() : this(App.Services.GetRequiredService<MainViewModel>())
     {
     }
 
@@ -146,13 +146,13 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            var editViewModel = App.Host.Services.GetRequiredService<EditProfileViewModel>();
+            var editViewModel = App.Services.GetRequiredService<EditProfileViewModel>();
             editViewModel.SetProfile(profile);
 
             var dialog = new EditProfileDialog(
                 editViewModel,
-                App.Host.Services.GetRequiredService<IWsbValidator>(),
-                App.Host.Services.GetRequiredService<ILogonScriptService>())
+                App.Services.GetRequiredService<IWsbValidator>(),
+                App.Services.GetRequiredService<ILogonScriptService>())
             {
                 XamlRoot = Content.XamlRoot
             };
@@ -179,7 +179,7 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            var duplicationService = App.Host.Services.GetRequiredService<ProfileDuplicationService>();
+            var duplicationService = App.Services.GetRequiredService<ProfileDuplicationService>();
             var duplicate = await duplicationService.DuplicateAsync(profile.Id);
             if (duplicate is null)
             {
@@ -218,7 +218,7 @@ public sealed partial class MainWindow : Window
                 }
 
                 await ViewModel.DeleteProfileAsync(profile);
-                await App.Host.Services.GetRequiredService<ILogonScriptService>().DeleteAsync(profile.Id);
+                await App.Services.GetRequiredService<ILogonScriptService>().DeleteAsync(profile.Id);
             }
             catch (Exception ex)
             {
@@ -236,7 +236,7 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            var validator = App.Host.Services.GetRequiredService<IWsbValidator>();
+            var validator = App.Services.GetRequiredService<IWsbValidator>();
             var validationResult = validator.Validate(profile.Configuration);
             if (!validationResult.IsValid)
             {
@@ -260,7 +260,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            var exportService = App.Host.Services.GetRequiredService<WsbExportService>();
+            var exportService = App.Services.GetRequiredService<WsbExportService>();
             var result = await exportService.ExportAsync(profile.Configuration, file.Path);
             if (!result.IsValid)
             {
@@ -296,7 +296,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            var importService = App.Host.Services.GetRequiredService<WsbImportService>();
+            var importService = App.Services.GetRequiredService<WsbImportService>();
             var result = await importService.ImportAsync(file.Path);
             ViewModel.FilterText = string.Empty;
             await ViewModel.LoadProfilesAsync();
@@ -345,7 +345,7 @@ public sealed partial class MainWindow : Window
 
     private async void OnSessionsClicked(object sender, RoutedEventArgs e)
     {
-        var sessions = App.Host.Services.GetRequiredService<ISandboxSessionManager>();
+        var sessions = App.Services.GetRequiredService<ISandboxSessionManager>();
         var dialog = new SessionsDialog(sessions, WinRT.Interop.WindowNative.GetWindowHandle(this))
         {
             XamlRoot = Content.XamlRoot
@@ -363,14 +363,14 @@ public sealed partial class MainWindow : Window
         var tag = item.Tag as string;
         try
         {
-            var settings = App.Host.Services.GetRequiredService<IAppSettingsStore>().Load();
+            var settings = App.Services.GetRequiredService<IAppSettingsStore>().Load();
             if (string.Equals(settings.LanguageTag, tag, StringComparison.OrdinalIgnoreCase) ||
                 (settings.LanguageTag is null && string.IsNullOrEmpty(tag)))
             {
                 return;
             }
 
-            App.Host.Services.GetRequiredService<IAppSettingsStore>()
+            App.Services.GetRequiredService<IAppSettingsStore>()
                 .Save(settings with { LanguageTag = string.IsNullOrEmpty(tag) ? null : tag });
         }
         catch (Exception ex)

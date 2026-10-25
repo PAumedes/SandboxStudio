@@ -26,6 +26,9 @@ $zipName = "SandboxStudio-$Version-$RuntimeIdentifier.zip"
 $zipPath = Join-Path $repoRoot "$OutputRoot/$zipName"
 
 Write-Host "Publishing SandboxStudio $Version ($RuntimeIdentifier) to $publishDir"
+# dotnet publish never deletes existing files, so leftovers from an earlier
+# build would otherwise ship inside the zip.
+if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
 dotnet publish $uiProject `
     -c Release `
     -r $RuntimeIdentifier `

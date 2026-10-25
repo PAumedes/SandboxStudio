@@ -221,10 +221,12 @@ public sealed partial class EditProfileDialog : ContentDialog
 
             if (scriptCommands is { Count: > 0 })
             {
-                await _scriptService.ApplyAsync(draft.Configuration, draft.Id, scriptCommands);
+                // Rewire only; the script file is written once the draft passes every
+                // check, so an abandoned edit cannot change what the stored profile runs.
+                _scriptService.Configure(draft.Configuration, draft.Id);
                 draft.LogonScriptCommands = scriptCommands;
 
-                // Surface the managed mount in the folder list; ApplyAsync repairs
+                // Surface the managed mount in the folder list; Configure repairs
                 // it if the row was edited or removed.
                 var managedFolder = draft.Configuration.MappedFolders.FirstOrDefault(_scriptService.IsManagedMapping);
                 if (managedFolder is not null && !ViewModel.MappedFolders.Contains(managedFolder))
@@ -255,7 +257,19 @@ public sealed partial class EditProfileDialog : ContentDialog
                 return;
             }
 
+            if (!ViewModel.ValidateForSave())
+            {
+                ShowDialogError(ViewModel.ValidationSummary ?? Localizer.Get("ValidationCorrectError"));
+                args.Cancel = true;
+                return;
+            }
+
             var validationResult = _validator.Validate(draft.Configuration);
+
+            if (scriptCommands is { Count: > 0 })
+            {
+                await _scriptService.WriteScriptAsync(draft.Id, scriptCommands);
+            }
 
             if (!await ViewModel.SaveAsync())
             {

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Validation;
@@ -35,6 +36,70 @@ public sealed class WsbValidatorTests
         // Assert
         result.IsValid.Should().BeTrue();
         result.Messages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_HostFolderWithEnvironmentVariable_IsAcceptedWhenItExpandsToAnExistingFolder()
+    {
+        // Arrange — %SystemRoot% is defined on every Windows host
+        var config = new WsbConfiguration();
+        config.MappedFolders.Add(new WsbMappedFolder { HostFolder = @"%SystemRoot%\System32" });
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Messages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_HostFolderWithUndefinedEnvironmentVariable_Warns()
+    {
+        // Arrange
+        var config = new WsbConfiguration();
+        config.MappedFolders.Add(new WsbMappedFolder { HostFolder = @"%SANDBOXSTUDIO_UNDEFINED_VAR%\Tools" });
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert — the profile may target a host that defines it
+        result.IsValid.Should().BeTrue();
+        result.Messages.Should().ContainSingle(m =>
+            m.Severity == ValidationSeverity.Warning && m.MessageKey == MessageKeys.HostFolderEnvVarUnresolved);
+    }
+
+    [Fact]
+    public void Validate_HostFolderWithEnvironmentVariable_OnOlderHost_WarnsAboutBuild()
+    {
+        // Arrange — a 22H2 host (build 22621) predates expansion support
+        var validator = new WsbValidator(new HostCapabilities(osBuild: () => 22621, readPolicyValue: _ => null));
+        var config = new WsbConfiguration();
+        config.MappedFolders.Add(new WsbMappedFolder { HostFolder = @"%SystemRoot%\System32" });
+
+        // Act
+        var result = validator.Validate(config);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        var warning = result.Messages.Should().ContainSingle(m => m.MessageKey == MessageKeys.HostFolderEnvVarsUnsupported).Subject;
+        warning.Severity.Should().Be(ValidationSeverity.Warning);
+        warning.MessageArgs.Should().Contain("22631");
+    }
+
+    [Fact]
+    public void Validate_HostFoldersThatExpandToTheSamePath_AreDuplicates()
+    {
+        // Arrange
+        var config = new WsbConfiguration();
+        config.MappedFolders.Add(new WsbMappedFolder { HostFolder = Environment.GetFolderPath(Environment.SpecialFolder.Windows) });
+        config.MappedFolders.Add(new WsbMappedFolder { HostFolder = "%SystemRoot%", SandboxFolder = @"C:\Other" });
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.Messages.Should().ContainSingle(m => m.MessageKey == MessageKeys.HostFolderDuplicate);
     }
 
     [Theory]

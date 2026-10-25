@@ -180,6 +180,26 @@ public sealed partial class MainViewModel : ObservableObject
             await _repository.EnsureDefaultPresetsAsync();
             var items = await _repository.GetAllAsync();
 
+            // Move script-backed profiles off the shared-directory layout before
+            // the sweep, so their legacy scripts are not mistaken for orphans.
+            if (_scripts is not null)
+            {
+                foreach (var profile in items)
+                {
+                    try
+                    {
+                        if (_scripts.MigrateLegacyLayout(profile.Configuration, profile.Id))
+                        {
+                            await _repository.SaveAsync(profile);
+                        }
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        // Best-effort; the profile keeps its legacy layout and is retried next load.
+                    }
+                }
+            }
+
             // Sweep script files orphaned by deletes or failed saves.
             _scripts?.PruneOrphans(items.Select(p => p.Id).ToHashSet());
 

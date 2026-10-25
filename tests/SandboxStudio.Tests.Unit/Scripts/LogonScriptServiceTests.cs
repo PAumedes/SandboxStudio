@@ -27,7 +27,11 @@ public sealed class LogonScriptServiceTests : IDisposable
         }
     }
 
-    private string ScriptFilePath => Path.Combine(_tempDir, $"{ProfileId:N}.cmd");
+    private string ProfileScriptDirectory => Path.Combine(_tempDir, $"{ProfileId:N}");
+
+    private string ScriptFilePath => Path.Combine(ProfileScriptDirectory, $"{ProfileId:N}.cmd");
+
+    private string LegacyScriptFilePath => Path.Combine(_tempDir, $"{ProfileId:N}.cmd");
 
     [Fact]
     public async Task ApplyAsync_WritesScriptFileWithCommands()
@@ -56,7 +60,7 @@ public sealed class LogonScriptServiceTests : IDisposable
 
         // Assert
         var mapping = configuration.MappedFolders.Should().ContainSingle().Subject;
-        mapping.HostFolder.Should().Be(_tempDir);
+        mapping.HostFolder.Should().Be(ProfileScriptDirectory);
         mapping.SandboxFolder.Should().Be(LogonScriptService.SandboxScriptDirectory);
         mapping.IsReadOnly.Should().BeTrue();
         configuration.LogonCommand!.Command.Should().Be(
@@ -92,7 +96,7 @@ public sealed class LogonScriptServiceTests : IDisposable
         // Assert — the managed mount's read-only contract is restored
         configuration.MappedFolders.Should().ContainSingle();
         configuration.MappedFolders[0].IsReadOnly.Should().BeTrue();
-        configuration.MappedFolders[0].HostFolder.Should().Be(_tempDir);
+        configuration.MappedFolders[0].HostFolder.Should().Be(ProfileScriptDirectory);
     }
 
     [Fact]
@@ -273,6 +277,105 @@ public sealed class LogonScriptServiceTests : IDisposable
         // Assert
         File.Exists(ScriptFilePath).Should().BeTrue();
         File.Exists(orphanPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PruneOrphans_DeletesScriptDirectoriesWithoutLiveProfiles()
+    {
+        // Arrange
+        var orphanId = Guid.NewGuid();
+        await _sut.WriteScriptAsync(orphanId, ["echo orphan"]);
+        await _sut.WriteScriptAsync(ProfileId, ["echo live"]);
+
+        // Act
+        _sut.PruneOrphans(new HashSet<Guid> { ProfileId });
+
+        // Assert
+        Directory.Exists(Path.Combine(_tempDir, $"{orphanId:N}")).Should().BeFalse();
+        File.Exists(ScriptFilePath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ApplyAsync_MountsOnlyTheProfilesOwnScriptDirectory()
+    {
+        // Arrange — another profile's script must not be visible to this sandbox
+        var otherId = Guid.NewGuid();
+        await _sut.ApplyAsync(new WsbConfiguration(), otherId, ["echo other"]);
+        var configuration = new WsbConfiguration();
+
+        // Act
+        await _sut.ApplyAsync(configuration, ProfileId, ["echo mine"]);
+
+        // Assert
+        var mountedFiles = Directory.GetFiles(configuration.MappedFolders.Single().HostFolder);
+        mountedFiles.Should().ContainSingle().Which.Should().Be(ScriptFilePath);
+    }
+
+    [Fact]
+    public void Configure_RewiresConfigurationWithoutWritingTheScript()
+    {
+        // Arrange
+        var configuration = new WsbConfiguration();
+
+        // Act
+        _sut.Configure(configuration, ProfileId);
+
+        // Assert
+        _sut.IsScriptBacked(configuration, ProfileId).Should().BeTrue();
+        configuration.MappedFolders.Should().ContainSingle(f => f.HostFolder == ProfileScriptDirectory && f.IsReadOnly);
+        File.Exists(ScriptFilePath).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MigrateLegacyLayout_MovesScriptAndNarrowsTheMount()
+    {
+        // Arrange — a profile saved before per-profile directories existed
+        await File.WriteAllTextAsync(LegacyScriptFilePath, "@echo off\r\necho legacy\r\n");
+        var configuration = new WsbConfiguration
+        {
+            LogonCommand = new WsbLogonCommand
+            {
+                Command = $"cmd.exe /c \"{LogonScriptService.SandboxScriptDirectory}\\{ProfileId:N}.cmd\""
+            }
+        };
+        configuration.MappedFolders.Add(new WsbMappedFolder
+        {
+            HostFolder = _tempDir,
+            SandboxFolder = LogonScriptService.SandboxScriptDirectory,
+            IsReadOnly = true
+        });
+
+        // Act
+        var changed = _sut.MigrateLegacyLayout(configuration, ProfileId);
+
+        // Assert
+        changed.Should().BeTrue();
+        File.Exists(LegacyScriptFilePath).Should().BeFalse();
+        (await File.ReadAllTextAsync(ScriptFilePath)).Should().Contain("echo legacy");
+        configuration.MappedFolders.Should().ContainSingle().Which.HostFolder.Should().Be(ProfileScriptDirectory);
+    }
+
+    [Fact]
+    public async Task MigrateLegacyLayout_WhenAlreadyMigrated_ReportsNoChange()
+    {
+        // Arrange
+        var configuration = new WsbConfiguration();
+        await _sut.ApplyAsync(configuration, ProfileId, ["echo hi"]);
+
+        // Act & Assert
+        _sut.MigrateLegacyLayout(configuration, ProfileId).Should().BeFalse();
+    }
+
+    [Fact]
+    public void MigrateLegacyLayout_WhenNotScriptBacked_ReportsNoChange()
+    {
+        var configuration = new WsbConfiguration
+        {
+            LogonCommand = new WsbLogonCommand { Command = "notepad.exe" }
+        };
+
+        _sut.MigrateLegacyLayout(configuration, ProfileId).Should().BeFalse();
+        configuration.MappedFolders.Should().BeEmpty();
     }
 
     [Fact]
