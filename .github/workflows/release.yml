@@ -7,9 +7,14 @@ on:
         description: 'Version override (defaults to the project Version property)'
         required: false
         default: ''
+      create_release:
+        description: 'Create a GitHub Release (tag v<version>) instead of a preview artifact'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   package-preview:
@@ -19,6 +24,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
@@ -53,14 +60,62 @@ jobs:
         shell: pwsh
         run: Get-ChildItem ./dist/SandboxStudio -Recurse -Include *.pdb, SandboxStudio.*.xml | Remove-Item -Force
 
-      - name: Create Preview Archive
+      - name: Create Archive and Checksum
         shell: pwsh
-        run: Compress-Archive -Path ./dist/SandboxStudio -DestinationPath "./SandboxStudio-${{ env.ZIP_VERSION }}-win-x64.zip" -CompressionLevel Optimal
+        run: |
+          $zip = "SandboxStudio-${{ env.ZIP_VERSION }}-win-x64.zip"
+          Compress-Archive -Path ./dist/SandboxStudio -DestinationPath "./$zip" -CompressionLevel Optimal
+          $sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$sha  $zip" | Out-File -FilePath "$zip.sha256" -Encoding ascii -NoNewline
+          echo "SHA256=$sha" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Upload Preview Artifact
         uses: actions/upload-artifact@v4
         with:
           name: SandboxStudio-${{ env.ZIP_VERSION }}-win-x64
-          path: SandboxStudio-${{ env.ZIP_VERSION }}-win-x64.zip
+          path: |
+            SandboxStudio-${{ env.ZIP_VERSION }}-win-x64.zip
+            SandboxStudio-${{ env.ZIP_VERSION }}-win-x64.zip.sha256
           if-no-files-found: error
           retention-days: 14
+
+      - name: Generate Release Notes
+        if: inputs.create_release
+        shell: pwsh
+        run: |
+          $tag = "v${{ env.ZIP_VERSION }}"
+          $prevTag = git tag --sort=-version:refname | Select-Object -First 1
+          $range = if ($prevTag) { "$prevTag..HEAD" } else { "HEAD" }
+          $commits = git log $range --pretty=format:"- %s (%h)" --no-merges
+          if (-not $commits) { $commits = "- No new commits" }
+          @"
+          ## SandboxStudio $tag
+
+          Self-contained Windows x64 build. Unpack the zip and run ``SandboxStudio.UI.exe`` — no .NET or Windows App SDK install needed.
+
+          ### Commits in this release
+          $commits
+
+          ### Artifact
+          | File | SHA-256 |
+          |---|---|
+          | ``SandboxStudio-${{ env.ZIP_VERSION }}-win-x64.zip`` | ``${{ env.SHA256 }}`` |
+
+          > Built by GitHub Actions ``release.yml``.
+          "@ | Out-File -FilePath release-notes.md -Encoding utf8
+
+      - name: Create GitHub Release
+        if: inputs.create_release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v${{ env.ZIP_VERSION }}"
+          git tag -a $tag -m "SandboxStudio ${{ env.ZIP_VERSION }}"
+          git push origin $tag
+          $zip = "SandboxStudio-${{ env.ZIP_VERSION }}-win-x64.zip"
+          gh release create $tag $zip "$zip.sha256" `
+            --title "SandboxStudio $tag" `
+            --notes-file release-notes.md `
+            --repo ${{ github.repository }}
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed." }

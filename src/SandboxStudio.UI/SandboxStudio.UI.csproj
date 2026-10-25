@@ -11,7 +11,18 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <DefaultLanguage>en-US</DefaultLanguage>
+
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <OptimizationPreference>Size</OptimizationPreference>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PublishReadyToRunExclude Include="Microsoft.Windows.SDK.NET.dll" />
+    <PublishReadyToRunExclude Include="Microsoft.InteractiveExperiences.Projection.dll" />
+    <PublishReadyToRunExclude Include="Microsoft.Web.WebView2.Core.Projection.dll" />
+    <PublishReadyToRunExclude Include="Microsoft.Windows.Widgets.Projection.dll" />
+    <PublishReadyToRunExclude Include="Microsoft.Windows.Management.Deployment.Projection.dll" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SandboxStudio.Core\SandboxStudio.Core.csproj" />
