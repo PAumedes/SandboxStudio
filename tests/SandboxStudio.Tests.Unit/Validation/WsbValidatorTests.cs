@@ -69,6 +69,30 @@ public sealed class WsbValidatorTests
             m.Severity == ValidationSeverity.Warning && m.MessageKey == MessageKeys.HostFolderEnvVarUnresolved);
     }
 
+    [Theory]
+    [InlineData(@"%APPDATA%\Tools", true)]
+    [InlineData(@"%LOCALAPPDATA%\SandboxStudio\Scripts", true)]
+    [InlineData(@"%LOCALAPPDATA%", true)]
+    [InlineData(@"%LOCALAPPDATA%\Temp\Tools", false)]
+    [InlineData(@"%LOCALAPPDATA%\Programs\Tools", false)]
+    [InlineData(@"%USERPROFILE%\.sandboxstudio\Scripts", false)]
+    [InlineData(@"%SystemRoot%\System32", false)]
+    public void Validate_HostFolderUnderAppData_Warns(string hostFolder, bool expectWarning)
+    {
+        // Arrange — Windows Sandbox fails with 0x80070002 on AppData mappings
+        var config = new WsbConfiguration();
+        config.MappedFolders.Add(new WsbMappedFolder { HostFolder = hostFolder });
+
+        // Act
+        var result = _sut.Validate(config);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        var warned = result.Messages.Any(m =>
+            m.Severity == ValidationSeverity.Warning && m.MessageKey == MessageKeys.HostFolderUnderAppData);
+        warned.Should().Be(expectWarning);
+    }
+
     [Fact]
     public void Validate_HostFolderWithEnvironmentVariable_OnOlderHost_WarnsAboutBuild()
     {

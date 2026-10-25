@@ -58,6 +58,9 @@ public static class MessageKeys
     /// <summary>"HostFolder path '{0}' references an environment variable that is not defined on this host."</summary>
     public const string HostFolderEnvVarUnresolved = "CoreHostFolderEnvVarUnresolved";
 
+    /// <summary>"HostFolder path '{0}' is under AppData; Windows Sandbox fails to start when it maps a folder there. Move the folder (for example, under %USERPROFILE% or Documents)."</summary>
+    public const string HostFolderUnderAppData = "CoreHostFolderUnderAppData";
+
     /// <summary>"Duplicate SandboxFolder destination detected: '{0}'."</summary>
     public const string SandboxFolderDuplicate = "CoreSandboxFolderDuplicate";
 

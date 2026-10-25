@@ -159,9 +159,17 @@ public sealed partial class WsbValidator : IWsbValidator
                 {
                     result.AddError($"{prefix}.HostFolder", $"Duplicate HostFolder mapping detected: '{folder.HostFolder}'.", MessageKeys.HostFolderDuplicate, [folder.HostFolder]);
                 }
-                else if (!Directory.Exists(hostFolder))
+                else
                 {
-                    result.AddWarning($"{prefix}.HostFolder", $"HostFolder directory '{folder.HostFolder}' does not exist on the host. Windows Sandbox will fail to start unless created.", MessageKeys.HostFolderMissing, [folder.HostFolder]);
+                    if (!Directory.Exists(hostFolder))
+                    {
+                        result.AddWarning($"{prefix}.HostFolder", $"HostFolder directory '{folder.HostFolder}' does not exist on the host. Windows Sandbox will fail to start unless created.", MessageKeys.HostFolderMissing, [folder.HostFolder]);
+                    }
+
+                    if (IsUnmappableAppDataPath(hostFolder))
+                    {
+                        result.AddWarning($"{prefix}.HostFolder", $"HostFolder path '{folder.HostFolder}' is under AppData; Windows Sandbox fails to start when it maps a folder there. Move the folder (for example, under %USERPROFILE% or Documents).", MessageKeys.HostFolderUnderAppData, [folder.HostFolder]);
+                    }
                 }
             }
 
@@ -188,6 +196,30 @@ public sealed partial class WsbValidator : IWsbValidator
                 result.AddError($"{prefix}.ReadOnly", $"ReadOnly value must be 'true' or 'false', found '{folder.ReadOnly}'.", MessageKeys.ReadOnlyInvalid, [folder.ReadOnly]);
             }
         }
+    }
+
+    /// <summary>
+    /// Windows Sandbox fails with 0x80070002 when a mapped host folder lives under
+    /// %APPDATA% or %LOCALAPPDATA%. %LOCALAPPDATA%\Temp and \Programs map fine.
+    /// </summary>
+    private static bool IsUnmappableAppDataPath(string hostFolder)
+    {
+        var path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(hostFolder));
+        var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        if (IsUnder(path, roaming))
+        {
+            return true;
+        }
+
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return IsUnder(path, local) &&
+            !IsUnder(path, Path.Combine(local, "Temp")) &&
+            !IsUnder(path, Path.Combine(local, "Programs"));
+
+        static bool IsUnder(string path, string root) =>
+            root.Length > 0 &&
+            (string.Equals(path, root, StringComparison.OrdinalIgnoreCase) ||
+             path.StartsWith(Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void ValidateLogonCommand(WsbLogonCommand? logonCommand, ValidationResult result)

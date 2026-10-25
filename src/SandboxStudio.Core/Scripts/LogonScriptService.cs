@@ -10,6 +10,9 @@ namespace SandboxStudio.Core.Scripts;
 /// (<c>Scripts\&lt;id&gt;\&lt;id&gt;.cmd</c>) and only that directory is mounted, so a
 /// sandbox never sees another profile's setup. The sandbox-side path stays
 /// <c>C:\SandboxStudio\Scripts\&lt;id&gt;.cmd</c> for every profile.
+/// The scripts live under <c>%USERPROFILE%\.sandboxstudio</c> because Windows
+/// Sandbox fails to start (0x80070002) when a mapped host folder sits under
+/// <c>%APPDATA%</c> or <c>%LOCALAPPDATA%</c>, where earlier releases kept them.
 /// </remarks>
 public sealed partial class LogonScriptService : ILogonScriptService
 {
@@ -24,17 +27,27 @@ public sealed partial class LogonScriptService : ILogonScriptService
     private static partial Regex ManagedCommandPattern();
 
     private readonly string _scriptsDirectory;
+    private readonly string? _legacyScriptsDirectory;
 
     /// <summary>
     /// Initializes a new instance of <see cref="LogonScriptService"/>.
     /// </summary>
-    /// <param name="scriptsDirectory">Optional custom script directory. Defaults to %LocalAppData%/SandboxStudio/Scripts.</param>
-    public LogonScriptService(string? scriptsDirectory = null)
+    /// <param name="scriptsDirectory">Optional custom script directory. Defaults to %USERPROFILE%/.sandboxstudio/Scripts.</param>
+    /// <param name="legacyScriptsDirectory">Optional directory that earlier releases wrote scripts to; its scripts
+    /// are migrated into the script directory. Defaults to %LocalAppData%/SandboxStudio/Scripts when
+    /// <paramref name="scriptsDirectory"/> is not supplied.</param>
+    public LogonScriptService(string? scriptsDirectory = null, string? legacyScriptsDirectory = null)
     {
         _scriptsDirectory = scriptsDirectory ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SandboxStudio",
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".sandboxstudio",
             "Scripts");
+        _legacyScriptsDirectory = legacyScriptsDirectory ?? (scriptsDirectory is null
+            ? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SandboxStudio",
+                "Scripts")
+            : null);
     }
 
     /// <inheritdoc/>
@@ -65,6 +78,9 @@ public sealed partial class LogonScriptService : ILogonScriptService
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
+        // The mount target must exist before validation runs, or the validator
+        // reports the not-yet-written script directory as a missing host folder.
+        Directory.CreateDirectory(GetProfileScriptDirectory(profileId));
         EnsureManagedMapping(configuration, profileId);
         configuration.LogonCommand = new WsbLogonCommand { Command = GetSandboxCommand(profileId) };
     }
@@ -149,13 +165,7 @@ public sealed partial class LogonScriptService : ILogonScriptService
             return Task.CompletedTask;
         }
 
-        var sourceId = match.Groups[1].Value;
-        var sourcePath = new[]
-            {
-                Path.Combine(_scriptsDirectory, sourceId, $"{sourceId}.cmd"),
-                Path.Combine(_scriptsDirectory, $"{sourceId}.cmd")
-            }
-            .FirstOrDefault(File.Exists);
+        var sourcePath = GetScriptCandidates(match.Groups[1].Value).FirstOrDefault(File.Exists);
         if (sourcePath is null)
         {
             // The referenced script does not exist on this host; leave the command
@@ -173,12 +183,20 @@ public sealed partial class LogonScriptService : ILogonScriptService
     public void PruneOrphans(IReadOnlySet<Guid> liveProfileIds)
     {
         ArgumentNullException.ThrowIfNull(liveProfileIds);
-        if (!Directory.Exists(_scriptsDirectory))
+        foreach (var root in GetScriptRoots())
+        {
+            PruneRoot(root, liveProfileIds);
+        }
+    }
+
+    private static void PruneRoot(string root, IReadOnlySet<Guid> liveProfileIds)
+    {
+        if (!Directory.Exists(root))
         {
             return;
         }
 
-        foreach (var directory in Directory.EnumerateDirectories(_scriptsDirectory))
+        foreach (var directory in Directory.EnumerateDirectories(root))
         {
             if (Guid.TryParseExact(Path.GetFileName(directory), "N", out var id) && !liveProfileIds.Contains(id))
             {
@@ -187,7 +205,7 @@ public sealed partial class LogonScriptService : ILogonScriptService
         }
 
         // Legacy flat-layout scripts (pre per-profile directories).
-        foreach (var file in Directory.EnumerateFiles(_scriptsDirectory, "*.cmd"))
+        foreach (var file in Directory.EnumerateFiles(root, "*.cmd"))
         {
             var stem = Path.GetFileNameWithoutExtension(file);
             if (Guid.TryParseExact(stem, "N", out var id) && liveProfileIds.Contains(id))
@@ -229,16 +247,17 @@ public sealed partial class LogonScriptService : ILogonScriptService
             return false;
         }
 
-        var legacyPath = GetLegacyScriptPath(profileId);
         var scriptPath = GetScriptPath(profileId);
-        if (File.Exists(legacyPath) && !File.Exists(scriptPath))
+        var legacyPath = GetScriptCandidates($"{profileId:N}").Skip(1).FirstOrDefault(File.Exists);
+        if (legacyPath is not null && !File.Exists(scriptPath))
         {
             Directory.CreateDirectory(profileDirectory);
             File.Move(legacyPath, scriptPath);
+            TryDeleteEmptyDirectory(Path.GetDirectoryName(legacyPath)!);
         }
 
-        // Narrow the mount even when no script is found, so the sandbox can no
-        // longer read the shared directory.
+        // Rewire the mount even when no script is found, so the sandbox neither
+        // reads the shared directory nor fails on an AppData host folder.
         EnsureManagedMapping(configuration, profileId);
         return true;
     }
@@ -270,24 +289,58 @@ public sealed partial class LogonScriptService : ILogonScriptService
     private string GetScriptPath(Guid profileId) =>
         Path.Combine(GetProfileScriptDirectory(profileId), $"{profileId:N}.cmd");
 
-    private string GetLegacyScriptPath(Guid profileId) =>
-        Path.Combine(_scriptsDirectory, $"{profileId:N}.cmd");
+    private string[] GetScriptRoots() =>
+        _legacyScriptsDirectory is null ? [_scriptsDirectory] : [_scriptsDirectory, _legacyScriptsDirectory];
+
+    /// <summary>
+    /// Where a profile's script may live, current location first: the
+    /// per-profile directory and the older flat layout, under each script root.
+    /// </summary>
+    private IEnumerable<string> GetScriptCandidates(string profileId) =>
+        GetScriptRoots().SelectMany(root => new[]
+        {
+            Path.Combine(root, profileId, $"{profileId}.cmd"),
+            Path.Combine(root, $"{profileId}.cmd")
+        });
+
+    private void TryDeleteEmptyDirectory(string directory)
+    {
+        if (GetScriptRoots().Contains(directory, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        try
+        {
+            if (!Directory.EnumerateFileSystemEntries(directory).Any())
+            {
+                Directory.Delete(directory);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Best-effort; an empty directory left behind is harmless.
+        }
+    }
 
     private static string GetSandboxCommand(Guid profileId) =>
         $"cmd.exe /c \"{SandboxScriptDirectory}\\{profileId:N}.cmd\"";
 
     private void DeleteScriptFiles(Guid profileId)
     {
-        var profileDirectory = GetProfileScriptDirectory(profileId);
-        if (Directory.Exists(profileDirectory))
+        foreach (var root in GetScriptRoots())
         {
-            Directory.Delete(profileDirectory, recursive: true);
-        }
+            var profileDirectory = Path.Combine(root, $"{profileId:N}");
+            if (Directory.Exists(profileDirectory))
+            {
+                Directory.Delete(profileDirectory, recursive: true);
+            }
 
-        var legacyPath = GetLegacyScriptPath(profileId);
-        if (File.Exists(legacyPath))
-        {
-            File.Delete(legacyPath);
+            var flatPath = Path.Combine(root, $"{profileId:N}.cmd");
+            if (File.Exists(flatPath))
+            {
+                File.Delete(flatPath);
+            }
         }
     }
 }
