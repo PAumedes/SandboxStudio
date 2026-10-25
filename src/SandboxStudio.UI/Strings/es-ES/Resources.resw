@@ -78,6 +78,11 @@
   <data name="NoMatchInfoBar.Message" xml:space="preserve"><value>Ningún perfil guardado contiene todas las etiquetas del filtro. Ajusta o borra el filtro.</value></data>
   <data name="LanguageRestartInfoBar.Title" xml:space="preserve"><value>Reinicio necesario</value></data>
   <data name="LanguageRestartInfoBar.Message" xml:space="preserve"><value>Reinicia SandboxStudio para aplicar el cambio de idioma.</value></data>
+  <data name="CardNetworkingEnabled" xml:space="preserve"><value>Red activada</value></data>
+  <data name="CardNetworkingDisabled" xml:space="preserve"><value>Red desactivada</value></data>
+  <data name="CardNetworkingDefault" xml:space="preserve"><value>Red: predeterminada</value></data>
+  <data name="ProfileMoreButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Más opciones</value></data>
+  <data name="ProfileMoreButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Más opciones</value></data>
   <data name="EditProfileMenuItem.Text" xml:space="preserve"><value>Editar perfil</value></data>
   <data name="DuplicateMenuItem.Text" xml:space="preserve"><value>Duplicar</value></data>
   <data name="ExportMenuItem.Text" xml:space="preserve"><value>Exportar .wsb</value></data>
@@ -254,7 +259,7 @@
   <data name="CoreHostFolderMissing" xml:space="preserve"><value>El directorio '{0}' de HostFolder no existe en el host. Windows Sandbox no se iniciará a menos que se cree.</value></data>
   <data name="CoreHostFolderEnvVarsUnsupported" xml:space="preserve"><value>La ruta '{0}' de HostFolder usa variables de entorno, que Windows Sandbox solo expande en la compilación {1} o posterior.</value></data>
   <data name="CoreHostFolderEnvVarUnresolved" xml:space="preserve"><value>La ruta '{0}' de HostFolder hace referencia a una variable de entorno que no está definida en este host.</value></data>
-  <data name="CoreHostFolderUnderAppData" xml:space="preserve"><value>La ruta '{0}' de HostFolder está dentro de AppData; Windows Sandbox no se inicia cuando asigna una carpeta de esa ubicación. Mueva la carpeta (por ejemplo, a %USERPROFILE% o Documentos).</value></data>
+  <data name="CoreHostFolderUnderAppData" xml:space="preserve"><value>La ruta '{0}' de HostFolder está dentro de AppData; Windows Sandbox no se inicia cuando asigna una carpeta de esa ubicación. Mueve la carpeta (por ejemplo, a %USERPROFILE% o Documentos).</value></data>
   <data name="CoreSandboxFolderDuplicate" xml:space="preserve"><value>Se detectó un destino de SandboxFolder duplicado: '{0}'.</value></data>
   <data name="CoreReadOnlyInvalid" xml:space="preserve"><value>El valor de ReadOnly debe ser 'true' o 'false'; se encontró '{0}'.</value></data>
   <data name="CoreLogonTooLong" xml:space="preserve"><value>La longitud del comando de inicio de sesión ({0}) supera el límite máximo de Windows de {1} caracteres.</value></data>

@@ -83,12 +83,19 @@ public sealed partial class App : Application
     }
 
     /// <summary>
-    /// Invoked when the application is launched normally by the end user.
+    /// Invoked when the application is launched by the end user, including to
+    /// open a <c>.wsb</c> file, which is imported as a new profile.
     /// </summary>
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _mainWindow = Services.GetRequiredService<MainWindow>();
+        var mainWindow = Services.GetRequiredService<MainWindow>();
+        _mainWindow = mainWindow;
         _mainWindow.Closed += (_, _) => _serviceProvider?.Dispose();
         _mainWindow.Activate();
+
+        if (AppDistribution.GetLaunchFilePath() is { } wsbPath)
+        {
+            _ = mainWindow.ImportOnLaunchAsync(wsbPath);
+        }
     }
 }

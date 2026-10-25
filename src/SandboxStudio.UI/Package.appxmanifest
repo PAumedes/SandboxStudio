@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX manifest for the Microsoft Store build (WindowsPackageType=MSIX); the
+  portable single-file exe ignores it. scripts/package-msix.ps1 stamps the
+  Identity and PublisherDisplayName reserved in Partner Center, and the version,
+  at package time, so the values below are local-development defaults.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="SandboxStudio.Dev"
+    Publisher="CN=SandboxStudio Dev"
+    Version="0.2.0.0" />
+
+  <Properties>
+    <DisplayName>SandboxStudio</DisplayName>
+    <PublisherDisplayName>SandboxStudio Contributors</PublisherDisplayName>
+    <Logo>Assets\Package\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+      Executable="$targetnametoken$.exe"
+      EntryPoint="$targetentrypoint$">
+      <uap:VisualElements
+        DisplayName="SandboxStudio"
+        Description="Create, launch and manage Windows Sandbox profiles."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Package\Square150x150Logo.png"
+        Square44x44Logo="Assets\Package\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="Assets\Package\Wide310x150Logo.png"
+          Square71x71Logo="Assets\Package\Square71x71Logo.png"
+          Square310x310Logo="Assets\Package\Square310x310Logo.png"
+          ShortName="SandboxStudio">
+          <uap:ShowNameOnTiles>
+            <uap:ShowOn Tile="square150x150Logo" />
+            <uap:ShowOn Tile="wide310x150Logo" />
+            <uap:ShowOn Tile="square310x310Logo" />
+          </uap:ShowNameOnTiles>
+        </uap:DefaultTile>
+        <uap:SplashScreen Image="Assets\Package\SplashScreen.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <!-- Double-clicking a .wsb file can open it in SandboxStudio for import. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="wsb">
+            <uap:SupportedFileTypes>
+              <uap:FileType>.wsb</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- Desktop (Win32) app: starts wsb.exe and WindowsSandbox.exe on the host. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

@@ -42,7 +42,7 @@ public sealed class SandboxLauncher : ISandboxLauncher
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _profileRepository = profileRepository;
         _sessionManager = sessionManager;
-        _tempDirectory = tempDirectory ?? Path.Combine(Path.GetTempPath(), "SandboxStudio", "Runs");
+        _tempDirectory = tempDirectory ?? SharedDataPaths.Runs;
         _processStarter = processStarter ?? Process.Start;
         _sandboxAvailability = sandboxAvailability ?? (() => File.Exists(WindowsSandboxExePath));
 

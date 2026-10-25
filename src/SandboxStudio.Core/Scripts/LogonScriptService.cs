@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using SandboxStudio.Core.Models;
+using SandboxStudio.Core.Storage;
 
 namespace SandboxStudio.Core.Scripts;
 
@@ -10,7 +11,7 @@ namespace SandboxStudio.Core.Scripts;
 /// (<c>Scripts\&lt;id&gt;\&lt;id&gt;.cmd</c>) and only that directory is mounted, so a
 /// sandbox never sees another profile's setup. The sandbox-side path stays
 /// <c>C:\SandboxStudio\Scripts\&lt;id&gt;.cmd</c> for every profile.
-/// The scripts live under <c>%USERPROFILE%\.sandboxstudio</c> because Windows
+/// The scripts live under <see cref="SharedDataPaths.Scripts"/> because Windows
 /// Sandbox fails to start (0x80070002) when a mapped host folder sits under
 /// <c>%APPDATA%</c> or <c>%LOCALAPPDATA%</c>, where earlier releases kept them.
 /// </remarks>
@@ -38,10 +39,7 @@ public sealed partial class LogonScriptService : ILogonScriptService
     /// <paramref name="scriptsDirectory"/> is not supplied.</param>
     public LogonScriptService(string? scriptsDirectory = null, string? legacyScriptsDirectory = null)
     {
-        _scriptsDirectory = scriptsDirectory ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".sandboxstudio",
-            "Scripts");
+        _scriptsDirectory = scriptsDirectory ?? SharedDataPaths.Scripts;
         _legacyScriptsDirectory = legacyScriptsDirectory ?? (scriptsDirectory is null
             ? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
