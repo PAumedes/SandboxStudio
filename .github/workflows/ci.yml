@@ -3,8 +3,8 @@ name: CI Build & Test
 on:
   push:
     branches: [ main ]
+  # Every pull request, including ones stacked on another feature branch.
   pull_request:
-    branches: [ main ]
 
 jobs:
   build-and-test:
@@ -45,3 +45,26 @@ jobs:
           path: tests/**/TestResults/*.trx
           if-no-files-found: warn
           retention-days: 7
+
+  package:
+    runs-on: windows-latest
+    name: Package (single exe + MSIX)
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      # Packaging regressions (a loose file next to the exe, a broken manifest)
+      # otherwise surface only on release day.
+      - name: Publish Single-File Executable
+        shell: pwsh
+        run: ./scripts/publish.ps1 -OutputRoot dist
+
+      - name: Package MSIX (x64)
+        shell: pwsh
+        run: ./scripts/package-msix.ps1 -Platforms x64 -OutputRoot dist
