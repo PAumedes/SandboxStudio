@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/PAumedes/SandboxStudio/security/advisories/new
+    about: Please report security problems privately.
+  - name: Windows Sandbox documentation
+    url: https://learn.microsoft.com/windows/security/application-security/application-isolation/windows-sandbox/
+    about: Questions about Windows Sandbox itself rather than SandboxStudio.

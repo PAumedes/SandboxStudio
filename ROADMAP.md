@@ -73,6 +73,9 @@ Status: Implemented and locally build- and visually verified; native title-bar i
 - Status: Implemented. `scripts/publish.ps1` produces a single portable executable, `SandboxStudio-<version>-win-x64.exe` (plus `.sha256`), bundling the .NET runtime and the self-contained Windows App SDK payload; it unpacks to `%TEMP%\.net` on first launch. Single-file publishing needs Windows App SDK 2.x — on 1.6 the bundled exe failed WinRT activation at startup, which is why 0.1.0 and 0.2.0 shipped as zipped folders. The `release.yml` workflow_dispatch produces the same versioned artifact (optional `version` input overrides the `Directory.Build.props` `Version`). The published build launches on this host; verification on a fully clean machine (no dev tooling) is still worth doing before a real release.
 - Profiles and settings stay under the per-user `%LOCALAPPDATA%` location; no portable-data mode is planned.
 - ~~Verify installation and runtime behavior on a clean Windows host~~ — partially verified: the published executable runs on the development host; a from-scratch machine check remains a manual pre-release step.
+- Microsoft Store channel — implemented: `scripts/package-msix.ps1` builds unsigned x64/arm64 MSIX packages and a `.msixbundle` (the Store signs them); `release.yml` can upload it as a draft submission with the Microsoft Store Developer CLI. Not yet verified: installing the MSIX (needs Developer Mode or a signed package) and Store certification.
+- Code signing — implemented, pending SignPath Foundation approval: `release.yml` sends the exe to SignPath, verifies the Authenticode signature and only then publishes the release. Unsigned until the `SIGNPATH_*` variables are configured.
+- winget — open: submit a `PAumedes.SandboxStudio` manifest to `microsoft/winget-pkgs` once releases are signed.
 
 ## Phase 8 — Update discovery
 

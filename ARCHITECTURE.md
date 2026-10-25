@@ -30,7 +30,7 @@ Pure domain library with zero UI dependencies:
 * **`Serialization`**: High-performance XML serializer emitting clean, compliant `.wsb` documents without spurious schema namespaces (`xmlns:xsi`, `xmlns:xsd`).
 * **`Validation`**: Enforces system constraints (memory bounds $\ge 256$ MB, command length limits, valid path syntax, read-only flags).
 * **`Storage`**: Thread-safe atomic file persistence for user-defined profiles and built-in curated presets (`CuratedPresets` in `Presets` defines the versioned catalog and filters host-conditional presets via `IHostCapabilities`).
-* **`Execution`**: Validates configuration, then launches through the `wsb` CLI when supported (capturing the sandbox ID) or materializes a transient `.wsb` file for the host Windows Sandbox process.
+* **`Execution`**: Validates configuration, then launches through the `wsb` CLI when supported (capturing the sandbox ID) or materializes a transient `.wsb` file under `%USERPROFILE%/.sandboxstudio/Runs` for the host Windows Sandbox process. `SharedDataPaths` (in `Storage`) owns that root: everything Windows Sandbox itself reads lives outside AppData, which Sandbox cannot map and which the Store build's AppData redirection hides from other processes.
 * **`Capabilities`**: Computes effective per-feature availability from host OS build and Windows Sandbox policy registry values, and reports overall Sandbox host status.
 * **`Sessions`**: Discovers and controls live sandbox sessions through the `wsb` CLI (Windows 11 24H2+): starts sessions from inline configuration XML, lists them from `--raw` JSON output, executes commands inside them (exit code only — output cannot be captured), reports their IP addresses, shares host folders into them, and stops or connects to them by sandbox ID.
 * **`Scripts`**: Packages multi-line logon commands into `.cmd` files under a per-profile directory `%USERPROFILE%/.sandboxstudio/Scripts/<profile-id>` (not AppData: Windows Sandbox fails to start when a mapped host folder lives under `%APPDATA%` or `%LOCALAPPDATA%`, so the validator warns about such mappings), delivered to the sandbox through a managed read-only mapped folder at `C:\SandboxStudio\Scripts` — Microsoft's recommended pattern for multi-step setup. Only the profile's own directory is mounted, so a sandbox never sees another profile's scripts; profiles saved with the older shared layout or under the old `%LocalAppData%/SandboxStudio/Scripts` root are migrated on load.
@@ -42,6 +42,16 @@ Presentation layer powered by Windows App SDK and WinUI 3:
 * **Fluent Design**: Native Mica backdrop, smooth transitions, reactive Light/Dark system theme synchronization.
 * **MVVM**: Fully decoupled view-models utilizing source-generated observables and relay commands.
 * **Dependency Injection**: Composed with a plain `Microsoft.Extensions.DependencyInjection` container (no generic host — the app runs no hosted services).
+* **Two distributions, one project**: `WindowsPackageType=None` (default) publishes the portable single-file exe; `WindowsPackageType=MSIX` builds the Microsoft Store package from `Package.appxmanifest`. `AppDistribution` tells them apart at runtime (package identity): the Store build skips the GitHub update check and receives `.wsb` files through file activation, while the portable exe takes them as a command-line argument.
+
+## Distribution and signing
+
+| Channel | Build | Signing | Updates |
+|---|---|---|---|
+| GitHub Releases | `scripts/publish.ps1` → single-file exe (x64) | Authenticode via SignPath Foundation, after manual approval | `GitHubUpdateChecker` banner |
+| Microsoft Store | `scripts/package-msix.ps1` → `.msixbundle` (x64 + arm64) | Microsoft, at Store ingestion | Store |
+
+Both come from one run of `.github/workflows/release.yml`; CI also packages both on every pull request. See [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Testing Pyramid
 
