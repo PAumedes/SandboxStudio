@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # The Windows App SDK packages must move together.
+      windows-app-sdk:
+        patterns:
+          - Microsoft.WindowsAppSDK*
+          - Microsoft.Windows.SDK.BuildTools*
+      test-dependencies:
+        patterns:
+          - xunit*
+          - FluentAssertions*
+          - Moq
+          - Microsoft.NET.Test.Sdk
+          - coverlet*
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

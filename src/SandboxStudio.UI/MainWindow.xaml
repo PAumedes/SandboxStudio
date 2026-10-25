@@ -90,6 +90,7 @@
         <!-- Main Content Area: Profiles Grid -->
         <ScrollViewer Grid.Row="2" Padding="24,8,24,16">
             <StackPanel Spacing="16">
+                <!-- Banners collapse while closed (see CollapseWhenClosed in code-behind). -->
                 <!-- Sandbox Readiness Warning Banner if not detected -->
                 <InfoBar
                     x:Name="SandboxStatusInfoBar"
@@ -142,7 +143,7 @@
                                 <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto">
                                     <FontIcon Grid.Column="0" Glyph="{x:Bind IconGlyph}" FontSize="20" Margin="0,0,12,0" Foreground="{ThemeResource AccentAAFillColorDefaultBrush}" />
                                     <TextBlock Grid.Column="1" Text="{x:Bind Name}" Style="{ThemeResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    <Button Grid.Column="2" Content="&#xE712;" FontFamily="{ThemeResource SymbolThemeFontFamily}" Background="Transparent" BorderThickness="0">
+                                    <Button x:Uid="ProfileMoreButton" Grid.Column="2" Content="&#xE712;" FontFamily="{ThemeResource SymbolThemeFontFamily}" Background="Transparent" BorderThickness="0">
                                         <Button.Flyout>
                                             <MenuFlyout>
                                                 <MenuFlyoutItem x:Uid="EditProfileMenuItem" Click="OnEditClicked" Tag="{x:Bind}">
@@ -184,7 +185,7 @@
 
                                 <!-- Card Footer: Quick Actions -->
                                 <Grid Grid.Row="2" ColumnDefinitions="*, Auto">
-                                    <TextBlock Grid.Column="0" Text="{x:Bind Configuration.Networking}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock Grid.Column="0" Text="{x:Bind conv:ProfileCardText.Networking(Configuration.Networking)}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                     <Button Grid.Column="1" Style="{ThemeResource AccentButtonStyle}" Click="OnLaunchClicked" Tag="{x:Bind}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE768;" FontSize="12" />

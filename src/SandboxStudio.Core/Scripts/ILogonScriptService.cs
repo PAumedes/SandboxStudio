@@ -28,8 +28,9 @@ public interface ILogonScriptService
     bool HasNonAsciiContent(IEnumerable<string> commands);
 
     /// <summary>
-    /// Rewires the configuration without touching disk: a read-only mapped folder
-    /// for the profile's own script directory (added or repaired) plus a
+    /// Rewires the configuration without writing the script: a read-only mapped
+    /// folder for the profile's own script directory (created empty if missing,
+    /// added or repaired in the configuration) plus a
     /// <see cref="WsbConfiguration.LogonCommand"/> that invokes the script.
     /// </summary>
     void Configure(WsbConfiguration configuration, Guid profileId);
@@ -88,9 +89,10 @@ public interface ILogonScriptService
     void PruneOrphans(IReadOnlySet<Guid> liveProfileIds);
 
     /// <summary>
-    /// Moves a script-backed profile off the legacy shared layout, where the
-    /// managed mount exposed every profile's script to every sandbox, onto its
-    /// own script directory.
+    /// Moves a script-backed profile off a legacy layout onto its own script
+    /// directory: the shared layout, where the managed mount exposed every
+    /// profile's script to every sandbox, and the old AppData location, which
+    /// Windows Sandbox refuses to map.
     /// </summary>
     /// <returns><see langword="true"/> when the configuration changed and must be saved.</returns>
     bool MigrateLegacyLayout(WsbConfiguration configuration, Guid profileId);

@@ -2,6 +2,8 @@
 #
 # Runs the full release gate locally — build, tests, packaging, checksum,
 # release notes — and optionally pushes a tag and GitHub release via gh.
+# Builds from here are unsigned: official releases come from the Release
+# workflow, which signs the exe through SignPath (see docs/RELEASING.md).
 #
 # Typical use:
 #   .\scripts\release.ps1                          # package only, project Version

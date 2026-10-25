@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reference copy of the SignPath artifact configuration for SandboxStudio (the
+  live copy is edited in the SignPath project; keep the two in sync).
+  release.yml uploads the exe with actions/upload-artifact, which zips it, so the
+  root element is a zip-file holding exactly one single-file PE to sign.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="SandboxStudio-*-win-x64.exe" product-name="SandboxStudio">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

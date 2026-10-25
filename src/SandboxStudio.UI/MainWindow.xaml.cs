@@ -45,6 +45,11 @@ public sealed partial class MainWindow : Window
 
         ApplyTitleBarCaptionColors(Content as FrameworkElement);
 
+        foreach (var infoBar in new[] { SandboxStatusInfoBar, LanguageRestartInfoBar, UpdateInfoBar, NoMatchingProfilesInfoBar })
+        {
+            CollapseWhenClosed(infoBar);
+        }
+
         // Reflect the stored language override in the picker; a stored tag outside
         // the shipped languages shows System default (the override is inert).
         var currentTag = App.Services.GetRequiredService<IAppSettingsStore>().Load().LanguageTag;
@@ -67,8 +72,28 @@ public sealed partial class MainWindow : Window
         SandboxEngineStatus.Text = ViewModel.SandboxStatusMessage ?? string.Empty;
 
         // Auto-load profiles on startup; update check runs silently alongside.
-        _ = ViewModel.CheckForUpdatesAsync();
-        _ = ViewModel.LoadProfilesAsync();
+        // Store installs are updated by the Store, so only the portable build asks GitHub.
+        if (!AppDistribution.IsPackaged)
+        {
+            _ = ViewModel.CheckForUpdatesAsync();
+        }
+
+        _initialLoad = ViewModel.LoadProfilesAsync();
+    }
+
+    private readonly Task _initialLoad;
+
+    /// <summary>
+    /// A closed InfoBar keeps its slot in the banner StackPanel, and with it the
+    /// Spacing gap above the profile cards, so it is collapsed while closed.
+    /// </summary>
+    private static void CollapseWhenClosed(InfoBar infoBar)
+    {
+        static void Sync(InfoBar bar) =>
+            bar.Visibility = bar.IsOpen ? Visibility.Visible : Visibility.Collapsed;
+
+        Sync(infoBar);
+        infoBar.RegisterPropertyChangedCallback(InfoBar.IsOpenProperty, (sender, _) => Sync((InfoBar)sender));
     }
 
     /// <summary>
@@ -291,13 +316,33 @@ public sealed partial class MainWindow : Window
                 WinRT.Interop.WindowNative.GetWindowHandle(this));
 
             var file = await picker.PickSingleFileAsync();
-            if (file is null)
+            if (file is not null)
             {
-                return;
+                await ImportFileAsync(file.Path);
             }
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = Localizer.Format("StatusImportFailed", ex.Message);
+        }
+    }
 
+    /// <summary>
+    /// Imports a <c>.wsb</c> file the app was opened with (Explorer "Open with",
+    /// or a path on the command line), once the startup profile load completes.
+    /// </summary>
+    public async Task ImportOnLaunchAsync(string path)
+    {
+        await _initialLoad;
+        await ImportFileAsync(path);
+    }
+
+    private async Task ImportFileAsync(string path)
+    {
+        try
+        {
             var importService = App.Services.GetRequiredService<WsbImportService>();
-            var result = await importService.ImportAsync(file.Path);
+            var result = await importService.ImportAsync(path);
             ViewModel.FilterText = string.Empty;
             await ViewModel.LoadProfilesAsync();
 
@@ -315,7 +360,7 @@ public sealed partial class MainWindow : Window
             }
 
             ViewModel.StatusMessage = notes.Count == 0
-                ? Localizer.Format("ImportSuccess", result.Profile.Name, file.Name)
+                ? Localizer.Format("ImportSuccess", result.Profile.Name, Path.GetFileName(path))
                 : Localizer.Format("ImportSuccessWithNotes", result.Profile.Name, string.Join(", ", notes), FormatValidationMessages(result.Validation));
         }
         catch (Exception ex)

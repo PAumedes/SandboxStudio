@@ -1,0 +1,55 @@
+name: Bug report
+description: Something in SandboxStudio does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Security problems go to a [private advisory](https://github.com/PAumedes/SandboxStudio/security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. Paste error messages verbatim.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a profile with …
+        2. Click Launch
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: SandboxStudio version
+      placeholder: 0.3.0
+    validations:
+      required: true
+  - type: dropdown
+    id: distribution
+    attributes:
+      label: Distribution
+      options:
+        - Portable exe (GitHub Releases)
+        - Microsoft Store
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows edition and build
+      description: Run `winver`, e.g. "Windows 11 Pro 24H2 (26100.4349)".
+    validations:
+      required: true
+  - type: textarea
+    id: profile
+    attributes:
+      label: Profile (.wsb export), if relevant
+      description: Card menu › Export .wsb. Remove any paths you consider private.
+      render: xml

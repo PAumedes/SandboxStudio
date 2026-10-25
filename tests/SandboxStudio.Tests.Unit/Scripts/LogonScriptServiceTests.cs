@@ -1,6 +1,8 @@
 using FluentAssertions;
+using SandboxStudio.Core.Localization;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Scripts;
+using SandboxStudio.Core.Validation;
 using Xunit;
 
 namespace SandboxStudio.Tests.Unit.Scripts;
@@ -327,6 +329,20 @@ public sealed class LogonScriptServiceTests : IDisposable
     }
 
     [Fact]
+    public void Configure_ThenValidate_DoesNotWarnThatTheScriptDirectoryIsMissing()
+    {
+        // Arrange — the editor validates before the script file is written
+        var configuration = new WsbConfiguration();
+
+        // Act
+        _sut.Configure(configuration, ProfileId);
+        var result = new WsbValidator().Validate(configuration);
+
+        // Assert
+        result.Messages.Should().NotContain(m => m.MessageKey == MessageKeys.HostFolderMissing);
+    }
+
+    [Fact]
     public async Task MigrateLegacyLayout_MovesScriptAndNarrowsTheMount()
     {
         // Arrange — a profile saved before per-profile directories existed
@@ -404,5 +420,121 @@ public sealed class LogonScriptServiceTests : IDisposable
     {
         // Act & Assert
         await _sut.DeleteAsync(ProfileId);
+    }
+
+    private (LogonScriptService Service, string Current, string Legacy) CreateWithLegacyRoot()
+    {
+        var current = Path.Combine(_tempDir, "current");
+        var legacy = Path.Combine(_tempDir, "legacy");
+        return (new LogonScriptService(current, legacy), current, legacy);
+    }
+
+    [Fact]
+    public async Task MigrateLegacyLayout_MovesScriptOutOfTheLegacyRootAndRewiresTheMount()
+    {
+        // Arrange — a profile saved when scripts lived under %LocalAppData%
+        var (sut, current, legacy) = CreateWithLegacyRoot();
+        var legacyDirectory = Path.Combine(legacy, $"{ProfileId:N}");
+        Directory.CreateDirectory(legacyDirectory);
+        await File.WriteAllTextAsync(Path.Combine(legacyDirectory, $"{ProfileId:N}.cmd"), "@echo off\r\necho old root\r\n");
+        var configuration = new WsbConfiguration();
+        new LogonScriptService(legacy).Configure(configuration, ProfileId);
+
+        // Act
+        var changed = sut.MigrateLegacyLayout(configuration, ProfileId);
+
+        // Assert
+        var currentDirectory = Path.Combine(current, $"{ProfileId:N}");
+        changed.Should().BeTrue();
+        (await File.ReadAllTextAsync(Path.Combine(currentDirectory, $"{ProfileId:N}.cmd"))).Should().Contain("echo old root");
+        Directory.Exists(legacyDirectory).Should().BeFalse();
+        configuration.MappedFolders.Should().ContainSingle().Which.HostFolder.Should().Be(currentDirectory);
+        sut.MigrateLegacyLayout(configuration, ProfileId).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PruneOrphans_AlsoSweepsTheLegacyRoot()
+    {
+        // Arrange
+        var (sut, _, legacy) = CreateWithLegacyRoot();
+        var orphanId = Guid.NewGuid();
+        var orphanDirectory = Path.Combine(legacy, $"{orphanId:N}");
+        Directory.CreateDirectory(orphanDirectory);
+        await File.WriteAllTextAsync(Path.Combine(orphanDirectory, $"{orphanId:N}.cmd"), "echo orphan");
+        var liveFlat = Path.Combine(legacy, $"{ProfileId:N}.cmd");
+        await File.WriteAllTextAsync(liveFlat, "echo live");
+
+        // Act
+        sut.PruneOrphans(new HashSet<Guid> { ProfileId });
+
+        // Assert
+        Directory.Exists(orphanDirectory).Should().BeFalse();
+        File.Exists(liveFlat).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_AlsoRemovesTheLegacyRootCopy()
+    {
+        // Arrange
+        var (sut, _, legacy) = CreateWithLegacyRoot();
+        var legacyDirectory = Path.Combine(legacy, $"{ProfileId:N}");
+        Directory.CreateDirectory(legacyDirectory);
+        await File.WriteAllTextAsync(Path.Combine(legacyDirectory, $"{ProfileId:N}.cmd"), "echo old");
+
+        // Act
+        await sut.DeleteAsync(ProfileId);
+
+        // Assert
+        Directory.Exists(legacyDirectory).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RehomeAsync_CopiesAScriptFoundOnlyInTheLegacyRoot()
+    {
+        // Arrange
+        var (sut, current, legacy) = CreateWithLegacyRoot();
+        var sourceId = Guid.NewGuid();
+        var sourceDirectory = Path.Combine(legacy, $"{sourceId:N}");
+        Directory.CreateDirectory(sourceDirectory);
+        await File.WriteAllTextAsync(Path.Combine(sourceDirectory, $"{sourceId:N}.cmd"), "echo imported");
+        var configuration = new WsbConfiguration
+        {
+            LogonCommand = new WsbLogonCommand
+            {
+                Command = $"cmd.exe /c \"{LogonScriptService.SandboxScriptDirectory}\\{sourceId:N}.cmd\""
+            }
+        };
+
+        // Act
+        await sut.RehomeAsync(configuration, ProfileId);
+
+        // Assert
+        (await File.ReadAllTextAsync(Path.Combine(current, $"{ProfileId:N}", $"{ProfileId:N}.cmd"))).Should().Contain("echo imported");
+        sut.IsScriptBacked(configuration, ProfileId).Should().BeTrue();
+    }
+
+    [Fact]
+    public void DefaultScriptsDirectory_IsOutsideAppData()
+    {
+        // Arrange — Windows Sandbox cannot map host folders under AppData
+        var configuration = new WsbConfiguration();
+        var sut = new LogonScriptService();
+
+        // Act
+        sut.Configure(configuration, ProfileId);
+
+        // Assert
+        var hostFolder = configuration.MappedFolders.Should().ContainSingle().Which.HostFolder;
+        try
+        {
+            hostFolder.Should().StartWith(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".sandboxstudio", "Scripts"));
+            new WsbValidator().Validate(configuration).Messages
+                .Should().NotContain(m => m.MessageKey == MessageKeys.HostFolderUnderAppData);
+        }
+        finally
+        {
+            Directory.Delete(hostFolder);
+        }
     }
 }
