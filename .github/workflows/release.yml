@@ -86,8 +86,8 @@ jobs:
           $tag = "v${{ env.ZIP_VERSION }}"
           $prevTag = git tag --sort=-version:refname | Select-Object -First 1
           $range = if ($prevTag) { "$prevTag..HEAD" } else { "HEAD" }
-          $commits = git log $range --pretty=format:"- %s (%h)" --no-merges
-          if (-not $commits) { $commits = "- No new commits" }
+          $commitLines = git log $range --pretty=format:"- %s (%h)" --no-merges
+          $commits = if ($commitLines) { $commitLines -join "`n" } else { "- No new commits" }
           @"
           ## SandboxStudio $tag
 

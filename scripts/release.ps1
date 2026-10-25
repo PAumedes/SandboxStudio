@@ -94,10 +94,10 @@ try {
 
     # ---------------------------------------------------------- release notes
     $notesFile = Join-Path $repoRoot "$OutputRoot/release-notes-$Version.md"
-    $prevTag = git tag --sort=-version:refname | Select-Object -First 1
+    $prevTag = git tag --sort=-version:refname | Where-Object { $_ -ne $tag } | Select-Object -First 1
     $range = if ($prevTag) { "$prevTag..HEAD" } else { "HEAD" }
-    $commits = git log $range --pretty=format:"- %s (%h)" --no-merges
-    if (-not $commits) { $commits = "- No new commits since $prevTag" }
+    $commitLines = git log $range --pretty=format:"- %s (%h)" --no-merges
+    $commits = if ($commitLines) { $commitLines -join "`n" } else { "- No new commits since $prevTag" }
     $folderMB = [math]::Round((Get-ChildItem $publishDir -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1)
     $zipMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
 
