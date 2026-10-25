@@ -1,7 +1,8 @@
-# Publishes a self-contained Windows x64 folder distribution of SandboxStudio
-# and packages it as a zip under dist/. This is a folder distribution — not a
-# single executable — so the Windows App SDK self-contained payload stays
-# intact next to the app.
+# Publishes SandboxStudio as a single portable executable under dist/:
+#   dist/SandboxStudio-<version>-<rid>.exe
+#   dist/SandboxStudio-<version>-<rid>.exe.sha256
+# The project bundles the .NET runtime, the Windows App SDK payload, and the
+# app's content into that one file (see SandboxStudio.UI.csproj).
 param(
     [string]$Version = "",
     [string]$RuntimeIdentifier = "win-x64",
@@ -21,30 +22,32 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = $Version.Trim()
 }
 
-$publishDir = Join-Path $repoRoot "$OutputRoot/SandboxStudio"
-$zipName = "SandboxStudio-$Version-$RuntimeIdentifier.zip"
-$zipPath = Join-Path $repoRoot "$OutputRoot/$zipName"
+$outputDir = Join-Path $repoRoot $OutputRoot
+$publishDir = Join-Path $outputDir "publish"
+$exeName = "SandboxStudio-$Version-$RuntimeIdentifier.exe"
+$exePath = Join-Path $outputDir $exeName
+$shaPath = "$exePath.sha256"
 
-Write-Host "Publishing SandboxStudio $Version ($RuntimeIdentifier) to $publishDir"
-# dotnet publish never deletes existing files, so leftovers from an earlier
-# build would otherwise ship inside the zip.
+Write-Host "Publishing SandboxStudio $Version ($RuntimeIdentifier) to $exePath"
+# dotnet publish never deletes existing files, so clear leftovers from an earlier build.
 if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
 dotnet publish $uiProject `
     -c Release `
     -r $RuntimeIdentifier `
-    --self-contained true `
-    -p:PublishSingleFile=false `
     -p:Version=$Version `
     -o $publishDir
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE." }
 
-# Strip debug artifacts from the shipped folder; only known doc-xml names are
-# removed so a future runtime .xml is never silently deleted.
-Get-ChildItem $publishDir -Recurse -Include *.pdb, SandboxStudio.*.xml | Remove-Item -Force
+# Everything except debug symbols must be inside the bundle; a loose file here
+# means the single-file publish regressed and the exe would not run alone.
+$shipped = @(Get-ChildItem $publishDir -Recurse -File | Where-Object { $_.Extension -ne ".pdb" })
+if ($shipped.Count -ne 1 -or $shipped[0].Name -ne "SandboxStudio.UI.exe") {
+    throw "Expected only SandboxStudio.UI.exe in $publishDir, found: $(($shipped | ForEach-Object Name) -join ', ')"
+}
 
-if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-# The zip contains the SandboxStudio folder itself so "extract" yields one tidy directory.
-Compress-Archive -Path $publishDir -DestinationPath $zipPath -CompressionLevel Optimal
+Copy-Item $shipped[0].FullName $exePath -Force
+$sha = (Get-FileHash $exePath -Algorithm SHA256).Hash.ToLower()
+"$sha  $exeName" | Out-File -FilePath $shaPath -Encoding ascii -NoNewline
 
-Write-Host "Distribution written to $publishDir"
-Write-Host "Archive written to $zipPath"
+Write-Host "Executable written to $exePath"
+Write-Host "SHA256 $sha written to $shaPath"

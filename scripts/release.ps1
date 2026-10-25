@@ -76,21 +76,17 @@ try {
     }
 
     # -------------------------------------------------------------- package
-    Write-Host "`n==> Publishing self-contained package..."
+    Write-Host "`n==> Publishing single-file executable..."
     & (Join-Path $PSScriptRoot "publish.ps1") -Version $Version -RuntimeIdentifier $RuntimeIdentifier -OutputRoot $OutputRoot
     if ($LASTEXITCODE -ne 0) { throw "publish.ps1 failed." }
 
-    $publishDir = Join-Path $repoRoot "$OutputRoot/SandboxStudio"
-    $zipName = "SandboxStudio-$Version-$RuntimeIdentifier.zip"
-    $zipPath = Join-Path $repoRoot "$OutputRoot/$zipName"
-    if (-not (Test-Path $zipPath)) { throw "Expected archive not found: $zipPath" }
-
-    # -------------------------------------------------------------- checksum
-    $sha = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLower()
-    $shaFile = "$zipPath.sha256"
-    "$sha  $zipName" | Out-File -FilePath $shaFile -Encoding ascii -NoNewline
+    $exeName = "SandboxStudio-$Version-$RuntimeIdentifier.exe"
+    $exePath = Join-Path $repoRoot "$OutputRoot/$exeName"
+    $shaFile = "$exePath.sha256"
+    if (-not (Test-Path $exePath)) { throw "Expected executable not found: $exePath" }
+    if (-not (Test-Path $shaFile)) { throw "Expected checksum not found: $shaFile" }
+    $sha = ((Get-Content $shaFile -Raw) -split '\s+')[0]
     Write-Host "`n==> SHA256: $sha"
-    Write-Host "    written to $shaFile"
 
     # ---------------------------------------------------------- release notes
     $notesFile = Join-Path $repoRoot "$OutputRoot/release-notes-$Version.md"
@@ -98,13 +94,12 @@ try {
     $range = if ($prevTag) { "$prevTag..HEAD" } else { "HEAD" }
     $commitLines = git log $range --pretty=format:"- %s (%h)" --no-merges
     $commits = if ($commitLines) { $commitLines -join "`n" } else { "- No new commits since $prevTag" }
-    $folderMB = [math]::Round((Get-ChildItem $publishDir -Recurse -File | Measure-Object Length -Sum).Sum / 1MB, 1)
-    $zipMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
+    $exeMB = [math]::Round((Get-Item $exePath).Length / 1MB, 1)
 
     @"
 ## SandboxStudio $tag
 
-Self-contained Windows x64 build. Unpack the zip and run ``SandboxStudio.UI.exe`` — no .NET or Windows App SDK install needed.
+Portable Windows x64 app in a single file. Download ``$exeName`` and run it — no installer, no .NET or Windows App SDK install needed. The first launch of each version takes a few extra seconds while it unpacks to ``%TEMP%\.net``.
 
 ### What's in this release
 $commits
@@ -112,9 +107,9 @@ $commits
 ### Artifacts
 | File | Size | SHA-256 |
 |---|---|---|
-| ``$zipName`` | $zipMB MB | ``$sha`` |
+| ``$exeName`` | $exeMB MB | ``$sha`` |
 
-*Unpacked size: $folderMB MB · Runtime: $RuntimeIdentifier · ReadyToRun enabled*
+*Runtime: $RuntimeIdentifier · self-contained single file*
 
 > Built locally by ``scripts/release.ps1``.
 "@ | Out-File -FilePath $notesFile -Encoding utf8
@@ -122,11 +117,10 @@ $commits
 
     # ------------------------------------------------------------ smoke test
     if ($Launch) {
-        $appExe = Join-Path $publishDir "SandboxStudio.UI.exe"
-        if (-not (Test-Path $appExe)) { throw "App executable not found: $appExe" }
-        Write-Host "`n==> Smoke-launching $appExe ..."
-        $proc = Start-Process $appExe -PassThru
-        Start-Sleep -Seconds 15
+        Write-Host "`n==> Smoke-launching $exePath ..."
+        $proc = Start-Process $exePath -PassThru
+        # The first launch of a new build unpacks the bundle before showing a window.
+        Start-Sleep -Seconds 30
         if ($proc.HasExited) {
             throw "App exited prematurely (code $($proc.ExitCode))."
         }
@@ -153,7 +147,7 @@ $commits
         git push origin $tag
         if ($LASTEXITCODE -ne 0) { throw "git push tag failed." }
 
-        $ghArgs = @("release", "create", $tag, $zipPath, $shaFile,
+        $ghArgs = @("release", "create", $tag, $exePath, $shaFile,
                     "--title", "SandboxStudio $tag",
                     "--notes-file", $notesFile,
                     "--repo", "PAumedes/SandboxStudio")
@@ -167,14 +161,13 @@ $commits
     # --------------------------------------------------------------- summary
     Write-Host "`n=================================================="
     Write-Host "  Release $Version complete"
-    Write-Host "  Folder : $publishDir  ($folderMB MB)"
-    Write-Host "  Zip    : $zipPath  ($zipMB MB)"
+    Write-Host "  Exe    : $exePath  ($exeMB MB)"
     Write-Host "  SHA256 : $shaFile"
     Write-Host "  Notes  : $notesFile"
     if (-not $PublishRelease) {
         Write-Host ""
         Write-Host "  To publish to GitHub later:"
-        Write-Host "    gh release create $tag `"$zipPath`" `"$shaFile`" --title `"SandboxStudio $tag`" --notes-file `"$notesFile`""
+        Write-Host "    gh release create $tag `"$exePath`" `"$shaFile`" --title `"SandboxStudio $tag`" --notes-file `"$notesFile`""
     }
     Write-Host "=================================================="
 }

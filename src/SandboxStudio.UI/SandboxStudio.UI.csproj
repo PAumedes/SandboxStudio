@@ -9,20 +9,30 @@
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <DefaultLanguage>en-US</DefaultLanguage>
-
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <OptimizationPreference>Size</OptimizationPreference>
+    <!--
+      MRT Core looks for <exe name>.pri before falling back to resources.pri.
+      The default name (SandboxStudio.UI.pri) crashes XAML startup as soon as
+      the exe is renamed, e.g. to the versioned release download name.
+    -->
+    <ProjectPriFileName>resources.pri</ProjectPriFileName>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PublishReadyToRunExclude Include="Microsoft.Windows.SDK.NET.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.InteractiveExperiences.Projection.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.Web.WebView2.Core.Projection.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.Windows.Widgets.Projection.dll" />
-    <PublishReadyToRunExclude Include="Microsoft.Windows.Management.Deployment.Projection.dll" />
-  </ItemGroup>
+  <!--
+    Publishing produces one portable SandboxStudio.UI.exe: the runtime, the
+    Windows App SDK payload, and the app's content files are bundled and
+    extracted to %TEMP%\.net on first launch. Requires Windows App SDK 1.5+
+    (verified on 2.5.1; 1.6 failed WinRT activation from a bundle).
+  -->
+  <PropertyGroup>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SandboxStudio.Core\SandboxStudio.Core.csproj" />
