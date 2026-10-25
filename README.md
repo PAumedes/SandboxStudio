@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" alt=".NET 10" />
-  <img src="https://img.shields.io/badge/Windows-App%20SDK%201.6-0078D4?logo=windows" alt="Windows App SDK" />
+  <img src="https://img.shields.io/badge/Windows-App%20SDK%202.5-0078D4?logo=windows" alt="Windows App SDK" />
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
 
@@ -94,7 +94,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Debug x64 build failed with exit code $LASTEXITCODE."
 }
 
-$debugOutput = Join-Path $PWD 'src\SandboxStudio.UI\bin\x64\Debug\net10.0-windows10.0.19041.0'
+$debugOutput = Join-Path $PWD 'src\SandboxStudio.UI\bin\x64\Debug\net10.0-windows10.0.19041.0\win-x64'
 Start-Process -FilePath (Join-Path $debugOutput 'SandboxStudio.UI.exe') -WorkingDirectory $debugOutput
 ```
 
@@ -102,14 +102,14 @@ The dashboard opens without Windows Sandbox enabled. Do not click a profile's **
 
 ### Distribution
 
-`scripts/publish.ps1` produces the self-contained Windows x64 folder (`dist/SandboxStudio`) plus a versioned zip (`dist/SandboxStudio-<version>-win-x64.zip`). The build embeds the Windows App SDK (`WindowsAppSDKSelfContained`), so no runtime prerequisites are needed on the target machine — unpack the folder and run `SandboxStudio.UI.exe`. Requires Windows 10 1809 (build 17763) or later with Windows Sandbox enabled; the app runs unpackaged (no MSIX package identity).
+SandboxStudio ships as one portable executable. `scripts/publish.ps1` produces `dist/SandboxStudio-<version>-win-x64.exe` plus its `.sha256` checksum. The .NET runtime, the Windows App SDK (`WindowsAppSDKSelfContained`), and the app's resources are bundled into that file, so there is nothing to install — download it and run it. The first launch of each version takes a few extra seconds while the bundle unpacks to `%TEMP%\.net`. Requires Windows 10 1809 (build 17763) or later with Windows Sandbox enabled; the app runs unpackaged (no MSIX package identity).
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1            # project Version
 powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1 -Version 0.2.0
 ```
 
-The **Package Preview** GitHub Actions workflow is manually triggered and uploads the same `SandboxStudio-<version>-win-x64` zip artifact. It does not create a release.
+The **Package Preview** GitHub Actions workflow is manually triggered and uploads the same `SandboxStudio-<version>-win-x64.exe` and checksum as a build artifact; with `create_release` enabled it also tags the commit and publishes them as a GitHub release.
 
 ## Contributing
 

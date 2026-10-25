@@ -184,7 +184,7 @@
 
                                 <!-- Card Footer: Quick Actions -->
                                 <Grid Grid.Row="2" ColumnDefinitions="*, Auto">
-                                    <TextBlock Grid.Column="0" Text="{x:Bind Configuration.Networking, Mode=OneWay}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock Grid.Column="0" Text="{x:Bind Configuration.Networking}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                     <Button Grid.Column="1" Style="{ThemeResource AccentButtonStyle}" Click="OnLaunchClicked" Tag="{x:Bind}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE768;" FontSize="12" />
