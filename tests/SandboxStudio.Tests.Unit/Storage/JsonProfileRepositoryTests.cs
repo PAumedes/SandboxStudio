@@ -180,25 +180,16 @@ public sealed class JsonProfileRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAllAsync_IgnoresLegacyPresetMarkerFiles()
+    public async Task GetAllAsync_IgnoresAndDeletesLegacyPresetMarkerFiles()
     {
-        // Preset-seeding markers from earlier releases must not surface as profiles
-        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initialized"), "3");
-        await File.WriteAllTextAsync(Path.Combine(_tempDir, ".initializing"), string.Empty);
-
-        (await _sut.GetAllAsync()).Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task GetAllAsync_DeletesLegacyPresetMarkerFiles()
-    {
-        // The removed preset-seeding machinery left these behind; they are cleaned up
+        // Preset-seeding markers from earlier releases must not surface as
+        // profiles, and are cleaned up on first use
         var initialized = Path.Combine(_tempDir, ".initialized");
         var initializing = Path.Combine(_tempDir, ".initializing");
         await File.WriteAllTextAsync(initialized, "3");
         await File.WriteAllTextAsync(initializing, string.Empty);
 
-        await _sut.GetAllAsync();
+        (await _sut.GetAllAsync()).Should().BeEmpty();
 
         File.Exists(initialized).Should().BeFalse();
         File.Exists(initializing).Should().BeFalse();

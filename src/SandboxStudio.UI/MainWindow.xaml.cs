@@ -174,18 +174,19 @@ public sealed partial class MainWindow : Window
 
     private async Task ShowQuickStartAsync()
     {
-        var dialog = new QuickStartDialog { XamlRoot = Content.XamlRoot, RequestedTheme = DialogTheme };
+        var settingsStore = App.Services.GetRequiredService<IAppSettingsStore>();
+        var dismissed = settingsStore.Load().QuickStartDismissed;
+        var dialog = new QuickStartDialog(dismissed) { XamlRoot = Content.XamlRoot, RequestedTheme = DialogTheme };
         await dialog.ShowAsync();
 
-        if (!dialog.DontShowAgain)
+        if (dialog.DontShowAgain == dismissed)
         {
             return;
         }
 
-        var settingsStore = App.Services.GetRequiredService<IAppSettingsStore>();
         try
         {
-            settingsStore.Save(settingsStore.Load() with { QuickStartDismissed = true });
+            settingsStore.Save(settingsStore.Load() with { QuickStartDismissed = dialog.DontShowAgain });
         }
         catch (Exception ex)
         {

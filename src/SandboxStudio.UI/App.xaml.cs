@@ -43,9 +43,9 @@ public sealed partial class App : Application
             {
                 Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = storedTag;
             }
-            catch (Exception)
+            catch (Exception ex) when (ex is ArgumentException or System.Runtime.InteropServices.COMException)
             {
-                // Malformed tag survived the supported-language check; fall back to OS language.
+                // The setter rejected the tag; fall back to the OS language.
             }
         }
         else if (AppDistribution.IsPackaged)
@@ -57,9 +57,10 @@ public sealed partial class App : Application
             {
                 Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = string.Empty;
             }
-            catch (Exception)
+            catch (Exception ex) when (ex is ArgumentException or System.Runtime.InteropServices.COMException)
             {
-                // No persisted override to clear; nothing to do.
+                // Clearing failed; a stale override only delays "System default"
+                // until it can be cleared on a later launch.
             }
         }
 

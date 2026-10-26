@@ -15,6 +15,22 @@ namespace SandboxStudio.UI.ViewModels;
 /// </summary>
 public sealed partial class MainViewModel : ObservableObject
 {
+    /// <summary>
+    /// Sandbox features controlled by a Windows Sandbox policy value; any of them
+    /// disabled by policy degrades an otherwise-ready engine.
+    /// </summary>
+    private static readonly SandboxFeature[] PolicyGatedFeatures =
+    [
+        SandboxFeature.Networking,
+        SandboxFeature.VGpu,
+        SandboxFeature.AudioInput,
+        SandboxFeature.VideoInput,
+        SandboxFeature.PrinterRedirection,
+        SandboxFeature.ClipboardRedirection,
+        SandboxFeature.MappedFolders,
+        SandboxFeature.WritableMappedFolders
+    ];
+
     private readonly IProfileRepository _repository;
     private readonly ILogonScriptService? _scripts;
     private readonly ISandboxLauncher _launcher;
@@ -154,22 +170,6 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Sandbox features controlled by a Windows Sandbox policy value; any of them
-    /// disabled by policy degrades an otherwise-ready engine.
-    /// </summary>
-    private static readonly SandboxFeature[] PolicyGatedFeatures =
-    [
-        SandboxFeature.Networking,
-        SandboxFeature.VGpu,
-        SandboxFeature.AudioInput,
-        SandboxFeature.VideoInput,
-        SandboxFeature.PrinterRedirection,
-        SandboxFeature.ClipboardRedirection,
-        SandboxFeature.MappedFolders,
-        SandboxFeature.WritableMappedFolders
-    ];
-
-    /// <summary>
     /// Gets the engine status-light state shown in the status bar: ready,
     /// degraded (usable but policy-restricted), or unavailable.
     /// </summary>
@@ -270,11 +270,24 @@ public sealed partial class MainViewModel : ObservableObject
     /// Builds an unsaved draft profile with a default name for the "New Profile"
     /// editor flow; the draft only persists when the user saves it in the editor.
     /// </summary>
-    public SandboxProfile CreateDraftProfile() => new()
+    public SandboxProfile CreateDraftProfile()
     {
-        Name = Localizer.Format("NewProfileDefaultName", _allProfiles.Count + 1),
-        Description = Localizer.Get("NewProfileDefaultDescription")
-    };
+        // Count-based numbering repeats after deletions; take the first free number.
+        var number = 1;
+        while (_allProfiles.Any(profile => string.Equals(
+                   profile.Name,
+                   Localizer.Format("NewProfileDefaultName", number),
+                   StringComparison.OrdinalIgnoreCase)))
+        {
+            number++;
+        }
+
+        return new SandboxProfile
+        {
+            Name = Localizer.Format("NewProfileDefaultName", number),
+            Description = Localizer.Get("NewProfileDefaultDescription")
+        };
+    }
 
     /// <summary>
     /// Launches the specified profile in Windows Sandbox.

@@ -270,17 +270,17 @@
                         Width="8"
                         Height="8"
                         Fill="{ThemeResource SystemFillColorSuccessBrush}"
-                        Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.EngineIsReady), Mode=OneWay}" />
+                        Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.EngineIsReady)}" />
                     <Ellipse
                         Width="8"
                         Height="8"
                         Fill="{ThemeResource SystemFillColorCautionBrush}"
-                        Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.EngineIsDegraded), Mode=OneWay}" />
+                        Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.EngineIsDegraded)}" />
                     <Ellipse
                         Width="8"
                         Height="8"
                         Fill="{ThemeResource SystemFillColorCriticalBrush}"
-                        Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.EngineIsUnavailable), Mode=OneWay}" />
+                        Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.EngineIsUnavailable)}" />
                     <TextBlock Text="{x:Bind ViewModel.SandboxStatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
