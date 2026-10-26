@@ -6,6 +6,8 @@ All notable changes to SandboxStudio are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-26
+
 ### Added
 - Microsoft Store distribution: an MSIX bundle (x64 and arm64) with Store tile,
   logo and splash assets, built by `scripts/package-msix.ps1` and optionally
@@ -54,6 +56,7 @@ builder, `.wsb` import and export, tags, live session management through the
 `wsb` CLI (Windows 11 24H2+), host capability and policy awareness, English and
 Spanish localization, and GitHub release update discovery.
 
-[Unreleased]: https://github.com/PAumedes/SandboxStudio/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/PAumedes/SandboxStudio/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/PAumedes/SandboxStudio/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/PAumedes/SandboxStudio/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/PAumedes/SandboxStudio/releases/tag/v0.1.0
