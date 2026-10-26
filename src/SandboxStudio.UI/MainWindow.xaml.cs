@@ -1,6 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Serialization;
@@ -35,11 +38,19 @@ public sealed partial class MainWindow : Window
         SetTitleBar(TitleBarDragRegion);
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "SandboxStudio.ico"));
 
-        // The custom title bar must track the OS theme for legible caption buttons.
-        // Title-bar color customization is honored on Windows 11 only; on Windows 10
-        // the setters are documented no-ops and the system-drawn defaults apply.
+        var storedSettings = App.Services.GetRequiredService<IAppSettingsStore>().Load();
         if (Content is FrameworkElement rootElement)
         {
+            rootElement.RequestedTheme = storedSettings.Theme switch
+            {
+                "Light" => ElementTheme.Light,
+                "Dark" => ElementTheme.Dark,
+                _ => ElementTheme.Default
+            };
+
+            // The custom title bar must track the OS theme for legible caption buttons.
+            // Title-bar color customization is honored on Windows 11 only; on Windows 10
+            // the setters are documented no-ops and the system-drawn defaults apply.
             rootElement.ActualThemeChanged += (_, _) => ApplyTitleBarCaptionColors(rootElement);
         }
 
@@ -49,13 +60,6 @@ public sealed partial class MainWindow : Window
         {
             CollapseWhenClosed(infoBar);
         }
-
-        // Reflect the stored language override in the picker; a stored tag outside
-        // the shipped languages shows System default (the override is inert).
-        var currentTag = App.Services.GetRequiredService<IAppSettingsStore>().Load().LanguageTag;
-        LanguageEnglishItem.IsChecked = string.Equals(currentTag, "en-US", StringComparison.OrdinalIgnoreCase);
-        LanguageSpanishItem.IsChecked = string.Equals(currentTag, "es-ES", StringComparison.OrdinalIgnoreCase);
-        LanguageSystemDefaultItem.IsChecked = !LanguageEnglishItem.IsChecked && !LanguageSpanishItem.IsChecked;
 
         // Check Sandbox availability
         SandboxStatusInfoBar.IsOpen = !ViewModel.IsSandboxInstalled;
@@ -69,8 +73,6 @@ public sealed partial class MainWindow : Window
             SandboxStatusInfoBar.Title = unavailableTitle;
         }
 
-        SandboxEngineStatus.Text = ViewModel.SandboxStatusMessage ?? string.Empty;
-
         // Auto-load profiles on startup; update check runs silently alongside.
         // Store installs are updated by the Store, so only the portable build asks GitHub.
         if (!AppDistribution.IsPackaged)
@@ -79,6 +81,8 @@ public sealed partial class MainWindow : Window
         }
 
         _initialLoad = ViewModel.LoadProfilesAsync();
+
+        Activated += OnFirstActivated;
     }
 
     private readonly Task _initialLoad;
@@ -127,13 +131,165 @@ public sealed partial class MainWindow : Window
         titleBar.ButtonPressedBackgroundColor = pressedBackground;
     }
 
-    private async void OnLaunchClicked(object sender, RoutedEventArgs e)
+    private void OnFirstActivated(object sender, WindowActivatedEventArgs args)
     {
-        if (sender is not Button { Tag: SandboxProfile profile })
+        // The quick-start guide needs a live XamlRoot; the window's first
+        // activation is the earliest point one exists.
+        Activated -= OnFirstActivated;
+        _ = ShowQuickStartIfNeededAsync();
+    }
+
+    private async Task ShowQuickStartIfNeededAsync()
+    {
+        var settingsStore = App.Services.GetRequiredService<IAppSettingsStore>();
+        if (settingsStore.Load().QuickStartDismissed)
         {
             return;
         }
 
+        await ShowQuickStartAsync();
+    }
+
+    private async Task ShowQuickStartAsync()
+    {
+        var dialog = new QuickStartDialog { XamlRoot = Content.XamlRoot };
+        await dialog.ShowAsync();
+
+        if (!dialog.DontShowAgain)
+        {
+            return;
+        }
+
+        var settingsStore = App.Services.GetRequiredService<IAppSettingsStore>();
+        try
+        {
+            settingsStore.Save(settingsStore.Load() with { QuickStartDismissed = true });
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = Localizer.Format("StatusSettingsSaveError", ex.Message);
+        }
+    }
+
+    private async void OnSettingsClicked(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new SettingsDialog(App.Services.GetRequiredService<IAppSettingsStore>())
+            {
+                XamlRoot = Content.XamlRoot
+            };
+
+            await dialog.ShowAsync();
+
+            LanguageRestartInfoBar.IsOpen = dialog.LanguageRestartRequired;
+
+            if (dialog.QuickStartRequested)
+            {
+                await ShowQuickStartAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = Localizer.Format("StatusSettingsError", ex.Message);
+        }
+    }
+
+    private async void OnNewProfileClicked(object sender, RoutedEventArgs e) =>
+        await OpenEditorAsync(ViewModel.CreateDraftProfile());
+
+    private void OnCardDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement card || card.DataContext is not SandboxProfile profile)
+        {
+            return;
+        }
+
+        // Double-tapping the Launch or "..." button must not open the editor.
+        if (IsWithinButton(e.OriginalSource as DependencyObject))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        _ = OpenEditorAsync(profile);
+    }
+
+    private void OnProfileMoreClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement button)
+        {
+            return;
+        }
+
+        // The card's context menu is attached to its root so right-click works
+        // anywhere on the card; the "..." button surfaces that same flyout.
+        for (DependencyObject? element = button; element is not null; element = VisualTreeHelper.GetParent(element))
+        {
+            if (element is UIElement { ContextFlyout: { } flyout })
+            {
+                flyout.ShowAt(button);
+                return;
+            }
+        }
+    }
+
+    private static bool IsWithinButton(DependencyObject? element)
+    {
+        for (; element is not null; element = VisualTreeHelper.GetParent(element))
+        {
+            if (element is ButtonBase)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Opens the profile editor for an existing profile or an unsaved draft.
+    /// </summary>
+    private async Task OpenEditorAsync(SandboxProfile profile)
+    {
+        try
+        {
+            var editViewModel = App.Services.GetRequiredService<EditProfileViewModel>();
+            editViewModel.SetProfile(profile);
+
+            var dialog = new EditProfileDialog(
+                editViewModel,
+                App.Services.GetRequiredService<IWsbValidator>(),
+                App.Services.GetRequiredService<ILogonScriptService>())
+            {
+                XamlRoot = Content.XamlRoot
+            };
+
+            await dialog.ShowAsync();
+            if (dialog.SavedSuccessfully)
+            {
+                await ViewModel.LoadProfilesAsync();
+                ViewModel.StatusMessage = dialog.PostSaveStatusMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = Localizer.Format("StatusEditError", ex.Message);
+        }
+    }
+
+    private bool _launchInProgress;
+
+    private async void OnLaunchClicked(object sender, RoutedEventArgs e)
+    {
+        // Click fires per press — a fast double-click must not launch twice or
+        // race two writable-mapping warning dialogs.
+        if (_launchInProgress || sender is not Button { Tag: SandboxProfile profile })
+        {
+            return;
+        }
+
+        _launchInProgress = true;
         try
         {
             if (profile.Configuration.MappedFolders.Any(folder => !folder.IsReadOnly))
@@ -160,6 +316,10 @@ public sealed partial class MainWindow : Window
         {
             ViewModel.StatusMessage = Localizer.Format("StatusLaunchError", ex.Message);
         }
+        finally
+        {
+            _launchInProgress = false;
+        }
     }
 
     private async void OnEditClicked(object sender, RoutedEventArgs e)
@@ -169,30 +329,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        try
-        {
-            var editViewModel = App.Services.GetRequiredService<EditProfileViewModel>();
-            editViewModel.SetProfile(profile);
-
-            var dialog = new EditProfileDialog(
-                editViewModel,
-                App.Services.GetRequiredService<IWsbValidator>(),
-                App.Services.GetRequiredService<ILogonScriptService>())
-            {
-                XamlRoot = Content.XamlRoot
-            };
-
-            await dialog.ShowAsync();
-            if (dialog.SavedSuccessfully)
-            {
-                await ViewModel.LoadProfilesAsync();
-                ViewModel.StatusMessage = dialog.PostSaveStatusMessage;
-            }
-        }
-        catch (Exception ex)
-        {
-            ViewModel.StatusMessage = Localizer.Format("StatusEditError", ex.Message);
-        }
+        await OpenEditorAsync(profile);
     }
 
     private async void OnDuplicateClicked(object sender, RoutedEventArgs e)
@@ -390,47 +527,19 @@ public sealed partial class MainWindow : Window
 
     private async void OnSessionsClicked(object sender, RoutedEventArgs e)
     {
-        var sessions = App.Services.GetRequiredService<ISandboxSessionManager>();
-        var dialog = new SessionsDialog(sessions, WinRT.Interop.WindowNative.GetWindowHandle(this))
-        {
-            XamlRoot = Content.XamlRoot
-        };
-        await dialog.ShowAsync();
-    }
-
-    private void OnLanguageClicked(object sender, RoutedEventArgs e)
-    {
-        if (sender is not RadioMenuFlyoutItem item)
-        {
-            return;
-        }
-
-        var tag = item.Tag as string;
         try
         {
-            var settings = App.Services.GetRequiredService<IAppSettingsStore>().Load();
-            if (string.Equals(settings.LanguageTag, tag, StringComparison.OrdinalIgnoreCase) ||
-                (settings.LanguageTag is null && string.IsNullOrEmpty(tag)))
+            var sessions = App.Services.GetRequiredService<ISandboxSessionManager>();
+            var dialog = new SessionsDialog(sessions, WinRT.Interop.WindowNative.GetWindowHandle(this))
             {
-                return;
-            }
-
-            App.Services.GetRequiredService<IAppSettingsStore>()
-                .Save(settings with { LanguageTag = string.IsNullOrEmpty(tag) ? null : tag });
+                XamlRoot = Content.XamlRoot
+            };
+            await dialog.ShowAsync();
         }
         catch (Exception ex)
         {
-            ViewModel.StatusMessage = Localizer.Format("StatusSettingsSaveError", ex.Message);
-            return;
+            ViewModel.StatusMessage = Localizer.Format("StatusSessionsError", ex.Message);
         }
-
-        // The override applies at the next launch; selecting the language the app is
-        // already running in cancels the pending restart notice.
-        var effectiveTag = Microsoft.Windows.Globalization.ApplicationLanguages.Languages
-            .FirstOrDefault();
-        LanguageRestartInfoBar.IsOpen =
-            !string.Equals(effectiveTag, tag, StringComparison.OrdinalIgnoreCase) &&
-            !(effectiveTag is null && string.IsNullOrEmpty(tag));
     }
 
     private static string FormatValidationMessages(ValidationResult result) =>

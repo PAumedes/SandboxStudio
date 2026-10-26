@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Execution;
 using SandboxStudio.Core.Models;
-using SandboxStudio.Core.Presets;
 using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Sessions;
@@ -34,27 +33,6 @@ public sealed class SanitySmokeTests : IDisposable
     }
 
     [Fact]
-    public void DefaultPresets_AreSyntacticallyValid()
-    {
-        // Arrange — pin capabilities so the preset set is host-independent
-        var repo = new JsonProfileRepository(
-            _smokeTempDir,
-            new CuratedPresets(new HostCapabilities(osBuild: () => 26100)));
-        var validator = new WsbValidator();
-
-        // Act
-        var presets = repo.GetDefaultPresets();
-
-        // Assert
-        presets.Should().NotBeEmpty();
-        foreach (var preset in presets)
-        {
-            var result = validator.Validate(preset.Configuration);
-            result.IsValid.Should().BeTrue($"Preset '{preset.Name}' must be valid according to WsbValidator.");
-        }
-    }
-
-    [Fact]
     public void DependencyInjection_RegistersAndResolvesAllCoreServices()
     {
         // Arrange
@@ -70,7 +48,6 @@ public sealed class SanitySmokeTests : IDisposable
         services.AddSingleton<IAppSettingsStore, JsonAppSettingsStore>();
         services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
         services.AddSingleton<IHostCapabilities, HostCapabilities>();
-        services.AddSingleton<CuratedPresets>();
         services.AddSingleton<ISandboxSessionManager, WsbSessionManager>();
         services.AddSingleton<IUpdateChecker, GitHubUpdateChecker>();
 
@@ -82,7 +59,6 @@ public sealed class SanitySmokeTests : IDisposable
         provider.GetRequiredService<IProfileRepository>().Should().NotBeNull();
         provider.GetRequiredService<ISandboxLauncher>().Should().NotBeNull();
         provider.GetRequiredService<IHostCapabilities>().Should().NotBeNull();
-        provider.GetRequiredService<CuratedPresets>().Should().NotBeNull();
         provider.GetRequiredService<WsbExportService>().Should().NotBeNull();
         provider.GetRequiredService<WsbImportService>().Should().NotBeNull();
         provider.GetRequiredService<ProfileDuplicationService>().Should().NotBeNull();

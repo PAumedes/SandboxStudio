@@ -72,8 +72,8 @@ public sealed class ReswParityTests
         // format strings are intentionally identical across languages.
         var allowedIdentical = new HashSet<string>
         {
-            "LanguageEnglishItem.Text",
-            "LanguageSpanishItem.Text",
+            "LanguageEnglishComboItem.Content",
+            "LanguageSpanishComboItem.Content",
             "VGpuComboBox.Header",
             "IpButton.Content",
             "ExecRunAsSystem",

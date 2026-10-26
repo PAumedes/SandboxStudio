@@ -32,6 +32,11 @@ All notable changes to SandboxStudio are documented here. The format follows
 - Saving a script-mode profile no longer warns that its script folder is missing.
 - The profile card's "More options" button now has an accessible name and tooltip.
 
+### Removed
+- Curated presets: Windows Sandbox has no profile store of its own, so the app
+  ships no pre-existing profiles. Profiles already seeded on existing
+  installations stay untouched — they are ordinary profiles now.
+
 ## [0.2.0] - 2026-10-25
 
 ### Fixed

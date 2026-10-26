@@ -40,6 +40,12 @@ public sealed partial class MainViewModel : ObservableObject
     public partial bool HasNoMatchingProfiles { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the library contains no profiles at all.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool HasNoProfiles { get; set; }
+
+    /// <summary>
     /// Gets or sets the currently selected profile.
     /// </summary>
     [ObservableProperty]
@@ -116,8 +122,17 @@ public sealed partial class MainViewModel : ObservableObject
 
         var status = capabilities.SandboxStatus;
         IsSandboxInstalled = status == HostSandboxStatus.Available;
+        var hasPolicyRestriction = status == HostSandboxStatus.Available && PolicyGatedFeatures
+            .Any(feature => _capabilities.GetAvailability(feature).Status == FeatureStatus.DisabledByPolicy);
+        EngineState = status switch
+        {
+            HostSandboxStatus.Available when hasPolicyRestriction => SandboxEngineState.Degraded,
+            HostSandboxStatus.Available => SandboxEngineState.Ready,
+            _ => SandboxEngineState.Unavailable
+        };
         SandboxStatusMessage = status switch
         {
+            HostSandboxStatus.Available when hasPolicyRestriction => Localizer.Get("SandboxStatusRestricted"),
             HostSandboxStatus.Available => Localizer.Get("SandboxStatusReady"),
             HostSandboxStatus.UnsupportedEdition => Localizer.Get("SandboxStatusEditionRequired"),
             HostSandboxStatus.VirtualizationDisabled => Localizer.Get("SandboxStatusVirtDisabled"),
@@ -137,6 +152,37 @@ public sealed partial class MainViewModel : ObservableObject
             _ => null
         };
     }
+
+    /// <summary>
+    /// Sandbox features controlled by a Windows Sandbox policy value; any of them
+    /// disabled by policy degrades an otherwise-ready engine.
+    /// </summary>
+    private static readonly SandboxFeature[] PolicyGatedFeatures =
+    [
+        SandboxFeature.Networking,
+        SandboxFeature.VGpu,
+        SandboxFeature.AudioInput,
+        SandboxFeature.VideoInput,
+        SandboxFeature.PrinterRedirection,
+        SandboxFeature.ClipboardRedirection,
+        SandboxFeature.MappedFolders,
+        SandboxFeature.WritableMappedFolders
+    ];
+
+    /// <summary>
+    /// Gets the engine status-light state shown in the status bar: ready,
+    /// degraded (usable but policy-restricted), or unavailable.
+    /// </summary>
+    public SandboxEngineState EngineState { get; }
+
+    /// <summary>Gets a value indicating whether the engine is fully usable.</summary>
+    public bool EngineIsReady => EngineState == SandboxEngineState.Ready;
+
+    /// <summary>Gets a value indicating whether the engine runs with policy restrictions.</summary>
+    public bool EngineIsDegraded => EngineState == SandboxEngineState.Degraded;
+
+    /// <summary>Gets a value indicating whether the engine cannot run on this host.</summary>
+    public bool EngineIsUnavailable => EngineState == SandboxEngineState.Unavailable;
 
     /// <summary>
     /// Checks the release feed for a newer version. Runs silently — only an
@@ -177,7 +223,6 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            await _repository.EnsureDefaultPresetsAsync();
             var items = await _repository.GetAllAsync();
 
             // Move script-backed profiles off the shared-directory layout before
@@ -222,31 +267,14 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Creates a new profile with default configuration and saves it to the repository.
+    /// Builds an unsaved draft profile with a default name for the "New Profile"
+    /// editor flow; the draft only persists when the user saves it in the editor.
     /// </summary>
-    [RelayCommand]
-    public async Task CreateProfileAsync()
+    public SandboxProfile CreateDraftProfile() => new()
     {
-        var newProfile = new SandboxProfile
-        {
-            Name = Localizer.Format("NewProfileDefaultName", _allProfiles.Count + 1),
-            Description = Localizer.Get("NewProfileDefaultDescription")
-        };
-
-        try
-        {
-            await _repository.SaveAsync(newProfile);
-            _allProfiles.Add(newProfile);
-            FilterText = string.Empty; // clear the filter so the new card is visible
-            ApplyFilter();
-            SelectedProfile = newProfile;
-            StatusMessage = Localizer.Format("StatusProfileCreated", newProfile.Name);
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = Localizer.Format("StatusProfileCreateError", ex.Message);
-        }
-    }
+        Name = Localizer.Format("NewProfileDefaultName", _allProfiles.Count + 1),
+        Description = Localizer.Get("NewProfileDefaultDescription")
+    };
 
     /// <summary>
     /// Launches the specified profile in Windows Sandbox.
@@ -323,7 +351,10 @@ public sealed partial class MainViewModel : ObservableObject
             Profiles.Add(profile);
         }
 
-        HasNoMatchingProfiles = Profiles.Count == 0 && requiredTags.Count > 0;
+        // An empty library shows the create-first-profile state even when the
+        // user typed a filter — "no matches" only makes sense with profiles to match.
+        HasNoProfiles = _allProfiles.Count == 0;
+        HasNoMatchingProfiles = _allProfiles.Count > 0 && Profiles.Count == 0;
         if (requiredTags.Count > 0)
         {
             StatusMessage = Localizer.Format("StatusTagFilterMatch", Profiles.Count, _allProfiles.Count);

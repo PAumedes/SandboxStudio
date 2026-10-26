@@ -17,7 +17,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/dashboard.png" alt="SandboxStudio dashboard with five sandbox profiles" />
+  <!-- Screenshot predates the curated-preset removal; retake once the new UI is verified. -->
+  <img src="docs/images/dashboard.png" alt="SandboxStudio dashboard with sandbox profiles" />
 </p>
 
 [Windows Sandbox](https://learn.microsoft.com/windows/security/application-security/application-isolation/windows-sandbox/)
@@ -49,9 +50,9 @@ download against the `.sha256` file published next to it.
 
 ## Features
 
-- **Profile library.** Curated presets adapted to your Windows build, plus your
-  own profiles, with tags and a tag filter. Duplicate, export and delete from
-  each card's menu.
+- **Profile library.** Your own profiles — created, duplicated, or imported
+  from `.wsb` files — with tags and a tag filter. Windows Sandbox has no profile
+  store of its own, so the app ships no pre-existing profiles.
 - **Every `.wsb` setting, with guardrails.** Networking, vGPU, memory,
   microphone and camera, protected client, clipboard and printer sharing, mapped
   folders and the startup command. New mapped folders are read-only; writable ones

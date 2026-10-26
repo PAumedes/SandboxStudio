@@ -18,185 +18,219 @@
         </Style>
     </ContentDialog.Resources>
 
-    <ScrollViewer x:Name="DialogScrollViewer" MaxHeight="480" VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="12">
-            <TextBlock
-                x:Name="ErrorTextBlock"
-                TextWrapping="Wrap"
-                Visibility="Collapsed"
-                Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+    <StackPanel MinWidth="500" Spacing="12">
+        <TextBlock
+            x:Name="ErrorTextBlock"
+            TextWrapping="Wrap"
+            Visibility="Collapsed"
+            Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
 
-            <InfoBar
-                x:Name="PolicyOverrideInfoBar"
-                x:Uid="PolicyOverrideInfoBar"
-                Severity="Warning"
-                IsOpen="False"
-                IsClosable="False" />
+        <InfoBar
+            x:Name="PolicyOverrideInfoBar"
+            x:Uid="PolicyOverrideInfoBar"
+            Severity="Warning"
+            IsOpen="False"
+            IsClosable="False" />
 
-            <TextBox x:Name="NameTextBox" x:Uid="NameTextBox" MaxLength="120" />
-            <TextBox
-                x:Name="DescriptionTextBox"
-                x:Uid="DescriptionTextBox"
-                MaxLength="500"
-                AcceptsReturn="True"
-                TextWrapping="Wrap"
-                MinHeight="72" />
-            <TextBox
-                x:Name="TagsTextBox"
-                x:Uid="TagsTextBox"
-                MaxLength="200" />
+        <Pivot x:Name="EditPivot">
+            <!-- Name, description, tags and the core resource settings -->
+            <PivotItem x:Uid="EditTabGeneral">
+                <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Margin="0,4,0,0">
+                        <TextBox x:Name="NameTextBox" x:Uid="NameTextBox" MaxLength="120" />
+                        <TextBox
+                            x:Name="DescriptionTextBox"
+                            x:Uid="DescriptionTextBox"
+                            MaxLength="500"
+                            AcceptsReturn="True"
+                            TextWrapping="Wrap"
+                            MinHeight="72" />
+                        <TextBox
+                            x:Name="TagsTextBox"
+                            x:Uid="TagsTextBox"
+                            MaxLength="200" />
 
-            <ComboBox x:Uid="NetworkingComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
-                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.Networking, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
-            </ComboBox>
-            <TextBlock
-                x:Name="NetworkingAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
-            <ComboBox x:Uid="VGpuComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
-                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VGpu, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
-            </ComboBox>
-            <TextBlock
-                x:Name="VGpuAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
+                        <ComboBox x:Uid="NetworkingComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+                                  PointerWheelChanged="OnComboBoxWheel"
+                                  SelectedIndex="{x:Bind ViewModel.Profile.Configuration.Networking, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                            <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
+                        </ComboBox>
+                        <TextBlock
+                            x:Name="NetworkingAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
+                        <ComboBox x:Uid="VGpuComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+                                  PointerWheelChanged="OnComboBoxWheel"
+                                  SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VGpu, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                            <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
+                        </ComboBox>
+                        <TextBlock
+                            x:Name="VGpuAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
 
-            <TextBox x:Name="MemoryTextBox" x:Uid="MemoryTextBox" />
-            <TextBlock
-                x:Name="MemoryAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
+                        <TextBox x:Name="MemoryTextBox" x:Uid="MemoryTextBox" />
+                        <TextBlock
+                            x:Name="MemoryAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
 
-            <TextBlock x:Uid="DevicesHeading" />
-            <TextBlock x:Uid="DevicesCaption" TextWrapping="Wrap" />
+            <!-- Host device and clipboard/printer sharing -->
+            <PivotItem x:Uid="EditTabSharing">
+                <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Margin="0,4,0,0">
+                        <TextBlock x:Uid="DevicesCaption" TextWrapping="Wrap" />
 
-            <ComboBox x:Uid="AudioInputComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
-                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.AudioInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
-            </ComboBox>
-            <TextBlock
-                x:Name="AudioInputAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
-            <ComboBox x:Uid="VideoInputComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
-                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VideoInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
-            </ComboBox>
-            <TextBlock
-                x:Name="VideoInputAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
-            <ComboBox x:Uid="ProtectedClientComboBox" HorizontalAlignment="Stretch"
-                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ProtectedClient, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
-            </ComboBox>
-            <TextBlock
-                x:Name="ProtectedClientAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
-            <ComboBox x:Uid="ClipboardComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
-                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ClipboardRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
-            </ComboBox>
-            <TextBlock
-                x:Name="ClipboardAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
-            <ComboBox x:Uid="PrinterComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
-                      SelectedIndex="{x:Bind ViewModel.Profile.Configuration.PrinterRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
-                <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
-                <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
-            </ComboBox>
-            <TextBlock
-                x:Name="PrinterAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
+                        <ComboBox x:Uid="AudioInputComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+                                  PointerWheelChanged="OnComboBoxWheel"
+                                  SelectedIndex="{x:Bind ViewModel.Profile.Configuration.AudioInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                            <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
+                        </ComboBox>
+                        <TextBlock
+                            x:Name="AudioInputAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
+                        <ComboBox x:Uid="VideoInputComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+                                  PointerWheelChanged="OnComboBoxWheel"
+                                  SelectedIndex="{x:Bind ViewModel.Profile.Configuration.VideoInput, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                            <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
+                        </ComboBox>
+                        <TextBlock
+                            x:Name="VideoInputAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
+                        <ComboBox x:Uid="ProtectedClientComboBox" HorizontalAlignment="Stretch"
+                                  SelectionChanged="OnTriStateSelectionChanged"
+                                  PointerWheelChanged="OnComboBoxWheel"
+                                  SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ProtectedClient, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                            <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
+                        </ComboBox>
+                        <TextBlock
+                            x:Name="ProtectedClientAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
+                        <ComboBox x:Uid="ClipboardComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+                                  PointerWheelChanged="OnComboBoxWheel"
+                                  SelectedIndex="{x:Bind ViewModel.Profile.Configuration.ClipboardRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                            <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
+                        </ComboBox>
+                        <TextBlock
+                            x:Name="ClipboardAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
+                        <ComboBox x:Uid="PrinterComboBox" HorizontalAlignment="Stretch" SelectionChanged="OnTriStateSelectionChanged"
+                                  PointerWheelChanged="OnComboBoxWheel"
+                                  SelectedIndex="{x:Bind ViewModel.Profile.Configuration.PrinterRedirection, Mode=TwoWay, Converter={StaticResource TriStateIndex}}">
+                            <ComboBoxItem Content="{x:Bind TriStateUnspecifiedLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDefaultLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateEnabledLabel, Mode=OneTime}" />
+                            <ComboBoxItem Content="{x:Bind TriStateDisabledLabel, Mode=OneTime}" />
+                        </ComboBox>
+                        <TextBlock
+                            x:Name="PrinterAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
 
-            <TextBox
-                x:Name="StartupCommandTextBox"
-                x:Uid="StartupCommandTextBox" />
-            <CheckBox
-                x:Name="ScriptModeCheckBox"
-                x:Uid="ScriptModeCheckBox"
-                Checked="OnScriptModeToggled"
-                Unchecked="OnScriptModeToggled" />
+            <!-- Host folder mappings -->
+            <PivotItem x:Uid="EditTabFolders">
+                <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Margin="0,4,0,0">
+                        <TextBlock x:Uid="MappedFoldersCaption" TextWrapping="Wrap" />
+                        <TextBlock
+                            x:Name="MappedFoldersAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
+                        <TextBlock
+                            x:Name="WritableMappedFoldersAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
+                        <TextBlock
+                            x:Name="MappedFolderEnvVarsAvailabilityText"
+                            Style="{StaticResource AvailabilityCaption}"
+                            Visibility="Collapsed" />
 
-            <TextBlock x:Uid="MappedFoldersHeading" />
-            <TextBlock x:Uid="MappedFoldersCaption" TextWrapping="Wrap" />
-            <TextBlock
-                x:Name="MappedFoldersAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
-            <TextBlock
-                x:Name="WritableMappedFoldersAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
-            <TextBlock
-                x:Name="MappedFolderEnvVarsAvailabilityText"
-                Style="{StaticResource AvailabilityCaption}"
-                Visibility="Collapsed" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.MappedFolders, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:WsbMappedFolder">
+                                    <StackPanel Spacing="8" Margin="0,0,0,12">
+                                        <TextBox
+                                            x:Name="HostFolderTextBox"
+                                            x:Uid="HostFolderTextBox"
+                                            Text="{x:Bind HostFolder, Mode=TwoWay}" />
+                                        <TextBlock
+                                            x:Uid="MissingHostFolderText"
+                                            TextWrapping="Wrap"
+                                            Visibility="{Binding ElementName=HostFolderTextBox, Path=Text, Mode=OneWay, Converter={StaticResource MissingHostFolderVisibility}}" />
+                                        <TextBox
+                                            x:Uid="SandboxFolderTextBox"
+                                            Text="{x:Bind SandboxFolder, Mode=TwoWay}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="12">
+                                            <CheckBox
+                                                x:Uid="ReadOnlyCheckBox"
+                                                IsChecked="{Binding IsReadOnly, Mode=TwoWay}"
+                                                Checked="OnReadOnlyStateChanged"
+                                                Unchecked="OnReadOnlyStateChanged" />
+                                            <Button x:Uid="RemoveFolderButton" Click="OnRemoveMappedFolderClicked" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-            <ItemsControl ItemsSource="{x:Bind ViewModel.MappedFolders, Mode=OneWay}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="models:WsbMappedFolder">
-                        <StackPanel Spacing="8" Margin="0,0,0,12">
-                            <TextBox
-                                x:Name="HostFolderTextBox"
-                                x:Uid="HostFolderTextBox"
-                                Text="{x:Bind HostFolder, Mode=TwoWay}" />
-                            <TextBlock
-                                x:Uid="MissingHostFolderText"
-                                TextWrapping="Wrap"
-                                Visibility="{Binding ElementName=HostFolderTextBox, Path=Text, Mode=OneWay, Converter={StaticResource MissingHostFolderVisibility}}" />
-                            <TextBox
-                                x:Uid="SandboxFolderTextBox"
-                                Text="{x:Bind SandboxFolder, Mode=TwoWay}" />
-                            <StackPanel Orientation="Horizontal" Spacing="12">
-                                <CheckBox
-                                    x:Uid="ReadOnlyCheckBox"
-                                    IsChecked="{Binding IsReadOnly, Mode=TwoWay}"
-                                    Checked="OnReadOnlyStateChanged"
-                                    Unchecked="OnReadOnlyStateChanged" />
-                                <Button x:Uid="RemoveFolderButton" Click="OnRemoveMappedFolderClicked" />
-                            </StackPanel>
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                        <Button x:Uid="AddFolderButton" Click="OnAddMappedFolderClicked" />
 
-            <Button x:Uid="AddFolderButton" Click="OnAddMappedFolderClicked" />
+                        <TextBlock
+                            x:Name="WritableMappingWarning"
+                            x:Uid="WritableMappingWarning"
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
+                        <CheckBox
+                            x:Name="AcknowledgeWritableMapping"
+                            x:Uid="AcknowledgeWritableMapping"
+                            Visibility="Collapsed" />
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
 
-            <TextBlock
-                x:Name="WritableMappingWarning"
-                x:Uid="WritableMappingWarning"
-                TextWrapping="Wrap"
-                Visibility="Collapsed" />
-            <CheckBox
-                x:Name="AcknowledgeWritableMapping"
-                x:Uid="AcknowledgeWritableMapping"
-                Visibility="Collapsed" />
-        </StackPanel>
-    </ScrollViewer>
+            <!-- Logon command / packaged script -->
+            <PivotItem x:Uid="EditTabStartup">
+                <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Margin="0,4,0,0">
+                        <TextBox
+                            x:Name="StartupCommandTextBox"
+                            x:Uid="StartupCommandTextBox" />
+                        <CheckBox
+                            x:Name="ScriptModeCheckBox"
+                            x:Uid="ScriptModeCheckBox"
+                            Checked="OnScriptModeToggled"
+                            Unchecked="OnScriptModeToggled" />
+                    </StackPanel>
+                </ScrollViewer>
+            </PivotItem>
+        </Pivot>
+    </StackPanel>
 </ContentDialog>

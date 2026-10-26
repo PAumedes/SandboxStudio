@@ -26,17 +26,4 @@ public interface IProfileRepository
     /// Deletes a profile by its unique identifier.
     /// </summary>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Ensures the built-in presets have been seeded. Fresh stores receive all presets;
-    /// stores seeded by an earlier release receive only presets introduced since then;
-    /// manually curated stores are left untouched.
-    /// </summary>
-    Task EnsureDefaultPresetsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the curated presets applicable to this host; presets that only make
-    /// sense on specific Windows builds are excluded elsewhere.
-    /// </summary>
-    IReadOnlyList<SandboxProfile> GetDefaultPresets();
 }

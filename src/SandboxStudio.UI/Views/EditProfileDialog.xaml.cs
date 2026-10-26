@@ -1,6 +1,8 @@
 using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Scripts;
@@ -87,6 +89,33 @@ public sealed partial class EditProfileDialog : ContentDialog
     private void UpdateScriptModeControls() =>
         StartupCommandTextBox.AcceptsReturn = ScriptModeCheckBox.IsChecked == true;
 
+    /// <summary>
+    /// A closed ComboBox consumes the mouse wheel to cycle its selection. That
+    /// silently changes profile settings while the user tries to scroll the tab,
+    /// so the wheel delta is forwarded to the surrounding ScrollViewer instead.
+    /// </summary>
+    private void OnComboBoxWheel(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not ComboBox combo || combo.IsDropDownOpen)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        // One wheel detent reports ~120 units; ScrollViewer's native wheel step
+        // is ~half that, so halving keeps scrolling over a combo consistent
+        // with scrolling over plain content.
+        var delta = e.GetCurrentPoint(null).Properties.MouseWheelDelta / 2.0;
+        for (DependencyObject? element = combo; element is not null; element = VisualTreeHelper.GetParent(element))
+        {
+            if (element is ScrollViewer scroller)
+            {
+                scroller.ChangeView(null, scroller.VerticalOffset - delta, null, disableAnimation: true);
+                return;
+            }
+        }
+    }
+
     private void ApplyAvailabilityCaptions()
     {
         ApplyAvailabilityCaption(NetworkingAvailabilityText, SandboxFeature.Networking);
@@ -172,10 +201,10 @@ public sealed partial class EditProfileDialog : ContentDialog
 
     private void ShowDialogError(string message)
     {
+        // The error text lives above the Pivot, so it stays visible no matter
+        // which tab is active — no scrolling needed.
         ErrorTextBlock.Text = message;
         ErrorTextBlock.Visibility = Visibility.Visible;
-        DialogScrollViewer.UpdateLayout();
-        DialogScrollViewer.ChangeView(null, 0, null, disableAnimation: true);
     }
 
     private async void OnPrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
@@ -240,6 +269,17 @@ public sealed partial class EditProfileDialog : ContentDialog
                 // artifacts; the first non-empty line supplies a plain logon
                 // command — unless it is the packaged command we just tore down.
                 await _scriptService.UnapplyAsync(draft.Configuration, draft.Id);
+                // UnapplyAsync may remove folders from the configuration; drop rows
+                // no longer in the draft so a cancelled save cannot leave ghosts.
+                foreach (var ghost in ViewModel.MappedFolders
+                             .Where(folder => !draft.Configuration.MappedFolders.Contains(folder))
+                             .ToList())
+                {
+                    ViewModel.MappedFolders.Remove(ghost);
+                }
+
+                UpdateWritableMappingControls();
+                RefreshPolicyOverrideInfoBar();
                 draft.LogonScriptCommands = null;
                 var startupCommand = lines.FirstOrDefault();
                 var resurrectingTornDownScript = wasScriptBacked &&

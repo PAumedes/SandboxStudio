@@ -59,6 +59,7 @@
                 Width="240"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
+                Margin="0,0,16,0"
                 Text="{x:Bind ViewModel.FilterText, Mode=TwoWay}" />
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
@@ -69,16 +70,10 @@
                 </Button>
                 <Button x:Uid="ImportButton" Click="OnImportClicked" />
                 <Button x:Uid="SessionsButton" Click="OnSessionsClicked" />
-                <DropDownButton x:Uid="LanguageButton">
-                    <DropDownButton.Flyout>
-                        <MenuFlyout>
-                            <RadioMenuFlyoutItem x:Uid="LanguageSystemDefaultItem" x:Name="LanguageSystemDefaultItem" GroupName="Language" Click="OnLanguageClicked" Tag="" />
-                            <RadioMenuFlyoutItem x:Uid="LanguageEnglishItem" x:Name="LanguageEnglishItem" GroupName="Language" Click="OnLanguageClicked" Tag="en-US" />
-                            <RadioMenuFlyoutItem x:Uid="LanguageSpanishItem" x:Name="LanguageSpanishItem" GroupName="Language" Click="OnLanguageClicked" Tag="es-ES" />
-                        </MenuFlyout>
-                    </DropDownButton.Flyout>
-                </DropDownButton>
-                <Button Style="{ThemeResource AccentButtonStyle}" Command="{x:Bind ViewModel.CreateProfileCommand}">
+                <Button x:Uid="SettingsButton" Click="OnSettingsClicked">
+                    <FontIcon Glyph="&#xE713;" FontSize="16" />
+                </Button>
+                <Button Style="{ThemeResource AccentButtonStyle}" Click="OnNewProfileClicked">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE710;" FontSize="14" />
                         <TextBlock x:Uid="NewProfileText" />
@@ -88,7 +83,7 @@
         </Grid>
 
         <!-- Main Content Area: Profiles Grid -->
-        <ScrollViewer Grid.Row="2" Padding="24,8,24,16">
+        <ScrollViewer Grid.Row="2" Padding="24,8,24,16" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="16">
                 <!-- Banners collapse while closed (see CollapseWhenClosed in code-behind). -->
                 <!-- Sandbox Readiness Warning Banner if not detected -->
@@ -125,6 +120,40 @@
                     Severity="Informational"
                     IsClosable="False" />
 
+                <!-- Empty state when the library has no profiles at all -->
+                <Grid
+                    MinHeight="360"
+                    Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.HasNoProfiles), Mode=OneWay}">
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="12"
+                        MaxWidth="440">
+                        <FontIcon
+                            Glyph="&#xE7B8;"
+                            FontSize="56"
+                            HorizontalAlignment="Center"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                        <TextBlock
+                            x:Uid="EmptyStateTitle"
+                            Style="{ThemeResource TitleTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextAlignment="Center" />
+                        <TextBlock
+                            x:Uid="EmptyStateMessage"
+                            Style="{ThemeResource BodyTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap" />
+                        <Button
+                            x:Uid="EmptyStateNewProfileButton"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            Click="OnNewProfileClicked"
+                            HorizontalAlignment="Center"
+                            Margin="0,8,0,0" />
+                    </StackPanel>
+                </Grid>
+
                 <!-- Profiles ItemsControl -->
                 <ItemsRepeater x:Name="ProfilesRepeater" ItemsSource="{x:Bind ViewModel.Profiles, Mode=OneWay}">
                     <ItemsRepeater.Layout>
@@ -137,38 +166,40 @@
                                   BorderThickness="1"
                                   CornerRadius="8"
                                   Padding="16"
-                                  RowDefinitions="Auto, *, Auto">
+                                  RowDefinitions="Auto, *, Auto"
+                                  DoubleTapped="OnCardDoubleTapped">
+
+                                <!-- Right-click menu; the "..." button shows the same flyout -->
+                                <Grid.ContextFlyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem x:Uid="EditProfileMenuItem" Click="OnEditClicked" Tag="{x:Bind}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE70F;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem x:Uid="DuplicateMenuItem" Click="OnDuplicateClicked" Tag="{x:Bind}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE8C8;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem x:Uid="ExportMenuItem" Click="OnExportClicked" Tag="{x:Bind}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE74E;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem x:Uid="DeleteProfileMenuItem" Click="OnDeleteClicked" Tag="{x:Bind}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE74D;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </Grid.ContextFlyout>
 
                                 <!-- Card Header -->
                                 <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto">
                                     <FontIcon Grid.Column="0" Glyph="{x:Bind IconGlyph}" FontSize="20" Margin="0,0,12,0" Foreground="{ThemeResource AccentAAFillColorDefaultBrush}" />
                                     <TextBlock Grid.Column="1" Text="{x:Bind Name}" Style="{ThemeResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    <Button x:Uid="ProfileMoreButton" Grid.Column="2" Content="&#xE712;" FontFamily="{ThemeResource SymbolThemeFontFamily}" Background="Transparent" BorderThickness="0">
-                                        <Button.Flyout>
-                                            <MenuFlyout>
-                                                <MenuFlyoutItem x:Uid="EditProfileMenuItem" Click="OnEditClicked" Tag="{x:Bind}">
-                                                    <MenuFlyoutItem.Icon>
-                                                        <FontIcon Glyph="&#xE70F;" />
-                                                    </MenuFlyoutItem.Icon>
-                                                </MenuFlyoutItem>
-                                                <MenuFlyoutItem x:Uid="DuplicateMenuItem" Click="OnDuplicateClicked" Tag="{x:Bind}">
-                                                    <MenuFlyoutItem.Icon>
-                                                        <FontIcon Glyph="&#xE8C8;" />
-                                                    </MenuFlyoutItem.Icon>
-                                                </MenuFlyoutItem>
-                                                <MenuFlyoutItem x:Uid="ExportMenuItem" Click="OnExportClicked" Tag="{x:Bind}">
-                                                    <MenuFlyoutItem.Icon>
-                                                        <FontIcon Glyph="&#xE74E;" />
-                                                    </MenuFlyoutItem.Icon>
-                                                </MenuFlyoutItem>
-                                                <MenuFlyoutItem x:Uid="DeleteProfileMenuItem" Click="OnDeleteClicked" Tag="{x:Bind}">
-                                                    <MenuFlyoutItem.Icon>
-                                                        <FontIcon Glyph="&#xE74D;" />
-                                                    </MenuFlyoutItem.Icon>
-                                                </MenuFlyoutItem>
-                                            </MenuFlyout>
-                                        </Button.Flyout>
-                                    </Button>
+                                    <Button x:Uid="ProfileMoreButton" Grid.Column="2" Content="&#xE712;" FontFamily="{ThemeResource SymbolThemeFontFamily}" Background="Transparent" BorderThickness="0" Click="OnProfileMoreClicked" />
                                 </Grid>
 
                                 <!-- Card Description and Tags -->
@@ -183,9 +214,39 @@
                                                Visibility="{Binding Tags, Converter={StaticResource TagsToVisibility}}" />
                                 </StackPanel>
 
-                                <!-- Card Footer: Quick Actions -->
+                                <!-- Card Footer: status chips and quick actions -->
                                 <Grid Grid.Row="2" ColumnDefinitions="*, Auto">
-                                    <TextBlock Grid.Column="0" Text="{x:Bind conv:ProfileCardText.Networking(Configuration.Networking)}" VerticalAlignment="Center" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <Border
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="6,2">
+                                            <TextBlock Text="{x:Bind conv:ProfileCardText.Networking(Configuration.Networking)}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </Border>
+                                        <Border
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="6,2">
+                                            <TextBlock Text="{x:Bind conv:ProfileCardText.VGpu(Configuration.VGpu)}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </Border>
+                                        <Border
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="6,2">
+                                            <TextBlock Text="{x:Bind conv:ProfileCardText.Memory(Configuration.MemoryInMB)}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </Border>
+                                        <Border
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="6,2"
+                                            Visibility="{x:Bind conv:ProfileCardText.MappedFoldersVisibility(Configuration.MappedFolders.Count)}">
+                                            <TextBlock Text="{x:Bind conv:ProfileCardText.MappedFolders(Configuration.MappedFolders.Count)}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </Border>
+                                    </StackPanel>
                                     <Button Grid.Column="1" Style="{ThemeResource AccentButtonStyle}" Click="OnLaunchClicked" Tag="{x:Bind}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE768;" FontSize="12" />
@@ -204,7 +265,24 @@
         <Border Grid.Row="3" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="24,6">
             <Grid ColumnDefinitions="*, Auto">
                 <TextBlock Grid.Column="0" Text="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                <TextBlock x:Name="SandboxEngineStatus" Grid.Column="1" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Ellipse
+                        Width="8"
+                        Height="8"
+                        Fill="{ThemeResource SystemFillColorSuccessBrush}"
+                        Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.EngineIsReady), Mode=OneWay}" />
+                    <Ellipse
+                        Width="8"
+                        Height="8"
+                        Fill="{ThemeResource SystemFillColorCautionBrush}"
+                        Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.EngineIsDegraded), Mode=OneWay}" />
+                    <Ellipse
+                        Width="8"
+                        Height="8"
+                        Fill="{ThemeResource SystemFillColorCriticalBrush}"
+                        Visibility="{x:Bind conv:VisibilityValues.ToVisibility(ViewModel.EngineIsUnavailable), Mode=OneWay}" />
+                    <TextBlock Text="{x:Bind ViewModel.SandboxStatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>
