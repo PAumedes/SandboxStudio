@@ -37,17 +37,8 @@ public sealed partial class SettingsDialog : ContentDialog
 
         InitializeComponent();
 
-        ThemeComboBox.SelectedIndex = _settings.Theme switch
-        {
-            "Light" => 1,
-            "Dark" => 2,
-            _ => 0
-        };
-        var languageIndex = LanguageComboBox.Items
-            .OfType<ComboBoxItem>()
-            .ToList()
-            .FindIndex(item => string.Equals(item.Tag as string, _settings.LanguageTag, StringComparison.OrdinalIgnoreCase));
-        LanguageComboBox.SelectedIndex = languageIndex < 0 ? 0 : languageIndex;
+        ThemeComboBox.SelectedIndex = ThemeIndex(_settings.Theme);
+        LanguageComboBox.SelectedIndex = LanguageIndex(_settings.LanguageTag);
 
         VersionTextBlock.Text = Localizer.Format("AboutVersionFormat", VersionLabel);
 
@@ -74,23 +65,49 @@ public sealed partial class SettingsDialog : ContentDialog
             return;
         }
 
-        // Live preview: RequestedTheme on the window root re-themes the whole app.
         var theme = item.Tag as string;
-        if (XamlRoot?.Content is FrameworkElement root)
+        var newTheme = string.IsNullOrEmpty(theme) ? null : theme;
+        if (!SaveSettings(_settings with { Theme = newTheme }))
         {
-            root.RequestedTheme = theme switch
-            {
-                "Light" => ElementTheme.Light,
-                "Dark" => ElementTheme.Dark,
-                _ => ElementTheme.Default
-            };
+            // Keep the picker on the theme that is actually stored.
+            RevertSelection(ThemeComboBox, ThemeIndex(_settings.Theme));
+            return;
         }
 
-        var newTheme = string.IsNullOrEmpty(theme) ? null : theme;
-        if (SaveSettings(_settings with { Theme = newTheme }))
+        _settings = _settings with { Theme = newTheme };
+
+        // Live preview: RequestedTheme on the window root re-themes the app; this
+        // dialog sits in the popup layer and does not inherit it, so set it too.
+        var elementTheme = AppTheme.FromSetting(newTheme);
+        if (XamlRoot?.Content is FrameworkElement root)
         {
-            _settings = _settings with { Theme = newTheme };
+            root.RequestedTheme = elementTheme;
         }
+
+        RequestedTheme = elementTheme;
+    }
+
+    private static int ThemeIndex(string? theme) => theme switch
+    {
+        "Light" => 1,
+        "Dark" => 2,
+        _ => 0
+    };
+
+    private int LanguageIndex(string? languageTag)
+    {
+        var index = LanguageComboBox.Items
+            .OfType<ComboBoxItem>()
+            .ToList()
+            .FindIndex(item => string.Equals(item.Tag as string, languageTag, StringComparison.OrdinalIgnoreCase));
+        return index < 0 ? 0 : index;
+    }
+
+    private void RevertSelection(ComboBox comboBox, int index)
+    {
+        _initialized = false;
+        comboBox.SelectedIndex = index;
+        _initialized = true;
     }
 
     private void OnLanguageSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -109,6 +126,7 @@ public sealed partial class SettingsDialog : ContentDialog
 
         if (!SaveSettings(_settings with { LanguageTag = newTag }))
         {
+            RevertSelection(LanguageComboBox, LanguageIndex(_settings.LanguageTag));
             return;
         }
 
@@ -138,18 +156,8 @@ public sealed partial class SettingsDialog : ContentDialog
         Hide();
     }
 
-    /// <summary>
-    /// A closed ComboBox consumes the mouse wheel to cycle its selection; with no
-    /// ScrollViewer to scroll, the wheel is swallowed to keep scrolling gestures
-    /// from silently changing settings.
-    /// </summary>
-    private void OnComboBoxWheel(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is ComboBox { IsDropDownOpen: false })
-        {
-            e.Handled = true;
-        }
-    }
+    private void OnComboBoxWheel(object sender, PointerRoutedEventArgs e) =>
+        ComboBoxWheel.Redirect(sender, e);
 
     private bool SaveSettings(AppSettings settings)
     {

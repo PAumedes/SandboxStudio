@@ -190,6 +190,21 @@ public sealed class JsonProfileRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task GetAllAsync_DeletesLegacyPresetMarkerFiles()
+    {
+        // The removed preset-seeding machinery left these behind; they are cleaned up
+        var initialized = Path.Combine(_tempDir, ".initialized");
+        var initializing = Path.Combine(_tempDir, ".initializing");
+        await File.WriteAllTextAsync(initialized, "3");
+        await File.WriteAllTextAsync(initializing, string.Empty);
+
+        await _sut.GetAllAsync();
+
+        File.Exists(initialized).Should().BeFalse();
+        File.Exists(initializing).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task GetByIdAsync_WhenFileIsCorrupt_ReturnsNullInsteadOfCrashing()
     {
         // Arrange

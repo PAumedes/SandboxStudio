@@ -123,6 +123,7 @@
   <data name="ImportSuccessWithNotes" xml:space="preserve"><value>Imported '{0}' with {1}: {2}</value></data>
   <data name="StatusSettingsSaveError" xml:space="preserve"><value>Could not save settings: {0}</value></data>
   <data name="StatusSettingsError" xml:space="preserve"><value>Settings error: {0}</value></data>
+  <data name="StatusQuickStartError" xml:space="preserve"><value>Quick start error: {0}</value></data>
 
   <!-- MainViewModel -->
   <data name="SandboxStatusReady" xml:space="preserve"><value>Windows Sandbox Engine Ready</value></data>

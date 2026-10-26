@@ -33,12 +33,12 @@ public static class ProfileCardText
     /// <summary>
     /// Returns the localized memory label: whole gigabytes stay readable
     /// ("RAM: 8 GB"), other values keep megabytes ("RAM: 512 MB"), and an
-    /// unset value reports the sandbox default.
+    /// unset or non-positive value reports the sandbox default.
     /// </summary>
     public static string Memory(int? megabytes) => megabytes switch
     {
         { } mb when mb > 0 && mb % 1024 == 0 => Localizer.Format("CardMemoryGb", mb / 1024),
-        { } mb => Localizer.Format("CardMemoryMb", mb),
+        { } mb when mb > 0 => Localizer.Format("CardMemoryMb", mb),
         _ => Localizer.Get("CardMemoryDefault")
     };
 

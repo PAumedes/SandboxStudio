@@ -41,12 +41,7 @@ public sealed partial class MainWindow : Window
         var storedSettings = App.Services.GetRequiredService<IAppSettingsStore>().Load();
         if (Content is FrameworkElement rootElement)
         {
-            rootElement.RequestedTheme = storedSettings.Theme switch
-            {
-                "Light" => ElementTheme.Light,
-                "Dark" => ElementTheme.Dark,
-                _ => ElementTheme.Default
-            };
+            rootElement.RequestedTheme = AppTheme.FromSetting(storedSettings.Theme);
 
             // The custom title bar must track the OS theme for legible caption buttons.
             // Title-bar color customization is honored on Windows 11 only; on Windows 10
@@ -133,26 +128,53 @@ public sealed partial class MainWindow : Window
 
     private void OnFirstActivated(object sender, WindowActivatedEventArgs args)
     {
-        // The quick-start guide needs a live XamlRoot; the window's first
-        // activation is the earliest point one exists.
+        // The quick-start guide needs a live XamlRoot. Activation can precede the
+        // root's Loaded event, so wait for it when the tree is not loaded yet.
         Activated -= OnFirstActivated;
+        if (Content is FrameworkElement { IsLoaded: false } root)
+        {
+            void OnRootLoaded(object loadedSender, RoutedEventArgs loadedArgs)
+            {
+                root.Loaded -= OnRootLoaded;
+                _ = ShowQuickStartIfNeededAsync();
+            }
+
+            root.Loaded += OnRootLoaded;
+            return;
+        }
+
         _ = ShowQuickStartIfNeededAsync();
     }
 
     private async Task ShowQuickStartIfNeededAsync()
     {
-        var settingsStore = App.Services.GetRequiredService<IAppSettingsStore>();
-        if (settingsStore.Load().QuickStartDismissed)
+        // Started fire-and-forget, so failures are reported here rather than lost.
+        try
         {
-            return;
-        }
+            var settingsStore = App.Services.GetRequiredService<IAppSettingsStore>();
+            if (settingsStore.Load().QuickStartDismissed)
+            {
+                return;
+            }
 
-        await ShowQuickStartAsync();
+            await ShowQuickStartAsync();
+        }
+        catch (Exception ex)
+        {
+            ViewModel.StatusMessage = Localizer.Format("StatusQuickStartError", ex.Message);
+        }
     }
+
+    /// <summary>
+    /// Theme for dialogs: they are hosted in the popup layer and do not inherit
+    /// the window root's <see cref="FrameworkElement.RequestedTheme"/>.
+    /// </summary>
+    private ElementTheme DialogTheme =>
+        Content is FrameworkElement root ? root.RequestedTheme : ElementTheme.Default;
 
     private async Task ShowQuickStartAsync()
     {
-        var dialog = new QuickStartDialog { XamlRoot = Content.XamlRoot };
+        var dialog = new QuickStartDialog { XamlRoot = Content.XamlRoot, RequestedTheme = DialogTheme };
         await dialog.ShowAsync();
 
         if (!dialog.DontShowAgain)
@@ -177,7 +199,8 @@ public sealed partial class MainWindow : Window
         {
             var dialog = new SettingsDialog(App.Services.GetRequiredService<IAppSettingsStore>())
             {
-                XamlRoot = Content.XamlRoot
+                XamlRoot = Content.XamlRoot,
+                RequestedTheme = DialogTheme
             };
 
             await dialog.ShowAsync();
@@ -262,7 +285,8 @@ public sealed partial class MainWindow : Window
                 App.Services.GetRequiredService<IWsbValidator>(),
                 App.Services.GetRequiredService<ILogonScriptService>())
             {
-                XamlRoot = Content.XamlRoot
+                XamlRoot = Content.XamlRoot,
+                RequestedTheme = DialogTheme
             };
 
             await dialog.ShowAsync();
@@ -301,7 +325,8 @@ public sealed partial class MainWindow : Window
                     PrimaryButtonText = Localizer.Get("LaunchAnywayButtonText"),
                     CloseButtonText = Localizer.Get("CancelButtonText"),
                     DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = Content.XamlRoot
+                    XamlRoot = Content.XamlRoot,
+                    RequestedTheme = DialogTheme
                 };
 
                 if (await dialog.ShowAsync() != ContentDialogResult.Primary)
@@ -371,7 +396,8 @@ public sealed partial class MainWindow : Window
                     PrimaryButtonText = Localizer.Get("DeleteDialogPrimaryButton"),
                     CloseButtonText = Localizer.Get("CancelButtonText"),
                     DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = Content.XamlRoot
+                    XamlRoot = Content.XamlRoot,
+                    RequestedTheme = DialogTheme
                 };
 
                 if (await dialog.ShowAsync() != ContentDialogResult.Primary)
@@ -532,7 +558,8 @@ public sealed partial class MainWindow : Window
             var sessions = App.Services.GetRequiredService<ISandboxSessionManager>();
             var dialog = new SessionsDialog(sessions, WinRT.Interop.WindowNative.GetWindowHandle(this))
             {
-                XamlRoot = Content.XamlRoot
+                XamlRoot = Content.XamlRoot,
+                RequestedTheme = DialogTheme
             };
             await dialog.ShowAsync();
         }

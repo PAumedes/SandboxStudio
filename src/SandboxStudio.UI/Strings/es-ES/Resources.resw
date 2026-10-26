@@ -123,6 +123,7 @@
   <data name="ImportSuccessWithNotes" xml:space="preserve"><value>'{0}' importado con {1}: {2}</value></data>
   <data name="StatusSettingsSaveError" xml:space="preserve"><value>No se pudieron guardar los ajustes: {0}</value></data>
   <data name="StatusSettingsError" xml:space="preserve"><value>Error de ajustes: {0}</value></data>
+  <data name="StatusQuickStartError" xml:space="preserve"><value>Error de la guía rápida: {0}</value></data>
 
   <!-- MainViewModel -->
   <data name="SandboxStatusReady" xml:space="preserve"><value>Motor de Windows Sandbox listo</value></data>
