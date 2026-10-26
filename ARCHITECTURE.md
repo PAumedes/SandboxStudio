@@ -29,7 +29,7 @@ Pure domain library with zero UI dependencies:
 * **`Models`**: Strongly-typed C# models mapping 1:1 to Microsoft Windows Sandbox XML schema (`<Configuration>`, `<VGpu>`, `<Networking>`, `<MappedFolders>`, `<LogonCommand>`).
 * **`Serialization`**: High-performance XML serializer emitting clean, compliant `.wsb` documents without spurious schema namespaces (`xmlns:xsi`, `xmlns:xsd`).
 * **`Validation`**: Enforces system constraints (memory bounds $\ge 256$ MB, command length limits, valid path syntax, read-only flags).
-* **`Storage`**: Thread-safe atomic file persistence for user-defined profiles and built-in curated presets (`CuratedPresets` in `Presets` defines the versioned catalog and filters host-conditional presets via `IHostCapabilities`).
+* **`Storage`**: Thread-safe atomic file persistence for user-defined profiles. The app ships no pre-existing profiles: Windows Sandbox itself has no profile store — `.wsb` files are loose XML documents the user keeps wherever they like — so the library starts empty and is populated only by the user (create, duplicate, or import).
 * **`Execution`**: Validates configuration, then launches through the `wsb` CLI when supported (capturing the sandbox ID) or materializes a transient `.wsb` file under `%USERPROFILE%/.sandboxstudio/Runs` for the host Windows Sandbox process. `SharedDataPaths` (in `Storage`) owns that root: everything Windows Sandbox itself reads lives outside AppData, which Sandbox cannot map and which the Store build's AppData redirection hides from other processes.
 * **`Capabilities`**: Computes effective per-feature availability from host OS build and Windows Sandbox policy registry values, and reports overall Sandbox host status.
 * **`Sessions`**: Discovers and controls live sandbox sessions through the `wsb` CLI (Windows 11 24H2+): starts sessions from inline configuration XML, lists them from `--raw` JSON output, executes commands inside them (exit code only — output cannot be captured), reports their IP addresses, shares host folders into them, and stops or connects to them by sandbox ID.
@@ -57,7 +57,7 @@ Both come from one run of `.github/workflows/release.yml`; CI also packages both
 
 ```mermaid
 flowchart TD
-    Smoke[Smoke Tests: Fast sanity, DI integrity, preset syntax] --> Integration[Integration Tests: Disk round-trip, WSB file generation]
+    Smoke[Smoke Tests: Fast sanity, DI integrity, schema contracts] --> Integration[Integration Tests: Disk round-trip, WSB file generation]
     Integration --> Unit[Unit Tests: Serialization, Validation, Repository, Launcher]
 ```
 

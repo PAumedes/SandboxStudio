@@ -11,4 +11,15 @@ public sealed record AppSettings
     /// means follow the OS language.
     /// </summary>
     public string? LanguageTag { get; init; }
+
+    /// <summary>
+    /// Application theme override: <c>"Light"</c> or <c>"Dark"</c>;
+    /// <see langword="null"/> or empty means follow the operating system.
+    /// </summary>
+    public string? Theme { get; init; }
+
+    /// <summary>
+    /// Whether the user dismissed the first-run quick-start guide ("don't show again").
+    /// </summary>
+    public bool QuickStartDismissed { get; init; }
 }

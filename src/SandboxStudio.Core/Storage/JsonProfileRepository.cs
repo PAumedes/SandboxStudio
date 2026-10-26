@@ -1,8 +1,5 @@
-using System.Globalization;
 using System.Text.Json;
-using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
-using SandboxStudio.Core.Presets;
 
 namespace SandboxStudio.Core.Storage;
 
@@ -17,30 +14,22 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
         PropertyNameCaseInsensitive = true
     };
 
-    /// <summary>
-    /// Seed version shipped before preset versioning existed.
-    /// </summary>
-    private const int InitialSeedVersion = 1;
-
     private readonly string _profilesDirectory;
-    private readonly CuratedPresets _presets;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private bool _disposed;
-    private bool _directoryEnsured;
+    private bool _legacyMarkersRemoved;
 
     /// <summary>
     /// Initializes a new instance with a specified or default storage directory.
     /// The storage directory is created lazily on first use.
     /// </summary>
     /// <param name="storageDirectory">Optional custom directory. Defaults to %LocalAppData%/SandboxStudio/Profiles.</param>
-    /// <param name="presets">Curated preset catalog; defaults to one built from live host capability probes.</param>
-    public JsonProfileRepository(string? storageDirectory = null, CuratedPresets? presets = null)
+    public JsonProfileRepository(string? storageDirectory = null)
     {
         _profilesDirectory = storageDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SandboxStudio",
             "Profiles");
-        _presets = presets ?? new CuratedPresets(new HostCapabilities());
     }
 
     /// <inheritdoc/>
@@ -79,117 +68,6 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
         {
             _lock.Release();
         }
-    }
-
-    /// <inheritdoc/>
-    public async Task EnsureDefaultPresetsAsync(CancellationToken cancellationToken = default)
-    {
-        var initializedFilePath = Path.Combine(_profilesDirectory, ".initialized");
-        var initializingFilePath = Path.Combine(_profilesDirectory, ".initializing");
-
-        await _lock.WaitAsync(cancellationToken);
-        try
-        {
-            EnsureStorageDirectory();
-
-            // The marker content is the seed version processed so far, relative to
-            // the host that seeded it — a store stamped on a host whose preset
-            // catalog excluded a conditional preset is not revisited if that preset
-            // later becomes applicable (the store lives in %LocalAppData%, so the
-            // host catalog rarely changes beneath it). Stores seeded before
-            // versioning wrote an empty marker and count as version 1.
-            var markerExists = File.Exists(initializedFilePath);
-            var seededVersion = ReadSeedVersion(initializedFilePath);
-            if (seededVersion >= CuratedPresets.CurrentSeedVersion)
-            {
-                // Remove an .initializing marker orphaned by an interrupted concurrent seed.
-                try
-                {
-                    File.Delete(initializingFilePath);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    // Cosmetic cleanup only.
-                }
-
-                return;
-            }
-
-            var presets = _presets.GetDefaultPresets();
-
-            if (!File.Exists(initializingFilePath))
-            {
-                // A populated store whose marker is absent — or was stamped without
-                // any preset files ever being written — was curated manually; record
-                // the current version but leave its contents untouched. Preset-file
-                // presence is judged against every known preset id, not the
-                // host-filtered list, so conditional presets count on any host.
-                var isCuratedStore = seededVersion < CuratedPresets.CurrentSeedVersion &&
-                    Directory.GetFiles(_profilesDirectory, "*.json").Length > 0 &&
-                    (!markerExists ||
-                     !CuratedPresets.IntroducedInVersions.Keys.Any(id => File.Exists(GetProfileFilePath(id))));
-                if (isCuratedStore)
-                {
-                    await File.WriteAllTextAsync(
-                        initializedFilePath,
-                        CuratedPresets.CurrentSeedVersion.ToString(CultureInfo.InvariantCulture),
-                        cancellationToken);
-                    return;
-                }
-
-                await File.WriteAllTextAsync(initializingFilePath, string.Empty, cancellationToken);
-            }
-
-            foreach (var preset in presets)
-            {
-                if (CuratedPresets.IntroducedInVersions.GetValueOrDefault(preset.Id) <= seededVersion)
-                {
-                    continue;
-                }
-
-                var filePath = GetProfileFilePath(preset.Id);
-                if (!File.Exists(filePath))
-                {
-                    await WriteProfileAsync(preset, cancellationToken);
-                }
-            }
-
-            await File.WriteAllTextAsync(
-                initializingFilePath,
-                CuratedPresets.CurrentSeedVersion.ToString(CultureInfo.InvariantCulture),
-                cancellationToken);
-
-            try
-            {
-                File.Move(initializingFilePath, initializedFilePath, overwrite: true);
-            }
-            catch (IOException) when (File.Exists(initializedFilePath))
-            {
-                // A concurrent process completed initialization first; treat as initialized.
-            }
-        }
-        finally
-        {
-            _lock.Release();
-        }
-    }
-
-    /// <summary>
-    /// Reads the preset seed version recorded in the marker file: absent file is
-    /// version 0, while empty or unparsable content marks a store seeded before
-    /// versioning existed.
-    /// </summary>
-    private static int ReadSeedVersion(string initializedFilePath)
-    {
-        if (!File.Exists(initializedFilePath))
-        {
-            return 0;
-        }
-
-        var content = File.ReadAllText(initializedFilePath).Trim();
-        return int.TryParse(content, NumberStyles.Integer, CultureInfo.InvariantCulture, out var version)
-            ? version
-            : InitialSeedVersion;
     }
 
     /// <inheritdoc/>
@@ -266,9 +144,6 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
         }
     }
 
-    /// <inheritdoc/>
-    public IReadOnlyList<SandboxProfile> GetDefaultPresets() => _presets.GetDefaultPresets();
-
     private string GetProfileFilePath(Guid id) => Path.Combine(_profilesDirectory, $"{id:N}.json");
 
     /// <summary>
@@ -284,10 +159,27 @@ public sealed class JsonProfileRepository : IProfileRepository, IDisposable
 
     private void EnsureStorageDirectory()
     {
-        if (!_directoryEnsured)
+        // CreateDirectory is idempotent; skipping it on a remembered flag broke
+        // repositories whose directory was deleted mid-session.
+        Directory.CreateDirectory(_profilesDirectory);
+
+        if (!_legacyMarkersRemoved)
         {
-            Directory.CreateDirectory(_profilesDirectory);
-            _directoryEnsured = true;
+            // .initialized/.initializing are inert litter left by the removed
+            // preset-seeding machinery; delete them once per repository instance.
+            foreach (var marker in new[] { ".initialized", ".initializing" })
+            {
+                try
+                {
+                    File.Delete(Path.Combine(_profilesDirectory, marker));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // Cosmetic cleanup only.
+                }
+            }
+
+            _legacyMarkersRemoved = true;
         }
     }
 

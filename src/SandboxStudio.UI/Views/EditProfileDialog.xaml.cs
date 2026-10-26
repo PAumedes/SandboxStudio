@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Models;
 using SandboxStudio.Core.Scripts;
@@ -87,6 +88,9 @@ public sealed partial class EditProfileDialog : ContentDialog
     private void UpdateScriptModeControls() =>
         StartupCommandTextBox.AcceptsReturn = ScriptModeCheckBox.IsChecked == true;
 
+    private void OnComboBoxWheel(object sender, PointerRoutedEventArgs e) =>
+        ComboBoxWheel.Redirect(sender, e);
+
     private void ApplyAvailabilityCaptions()
     {
         ApplyAvailabilityCaption(NetworkingAvailabilityText, SandboxFeature.Networking);
@@ -172,10 +176,10 @@ public sealed partial class EditProfileDialog : ContentDialog
 
     private void ShowDialogError(string message)
     {
+        // The error text lives above the Pivot, so it stays visible no matter
+        // which tab is active — no scrolling needed.
         ErrorTextBlock.Text = message;
         ErrorTextBlock.Visibility = Visibility.Visible;
-        DialogScrollViewer.UpdateLayout();
-        DialogScrollViewer.ChangeView(null, 0, null, disableAnimation: true);
     }
 
     private async void OnPrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
@@ -240,6 +244,17 @@ public sealed partial class EditProfileDialog : ContentDialog
                 // artifacts; the first non-empty line supplies a plain logon
                 // command — unless it is the packaged command we just tore down.
                 await _scriptService.UnapplyAsync(draft.Configuration, draft.Id);
+                // UnapplyAsync may remove folders from the configuration; drop rows
+                // no longer in the draft so a cancelled save cannot leave ghosts.
+                foreach (var ghost in ViewModel.MappedFolders
+                             .Where(folder => !draft.Configuration.MappedFolders.Any(kept => ReferenceEquals(kept, folder)))
+                             .ToList())
+                {
+                    ViewModel.MappedFolders.Remove(ghost);
+                }
+
+                UpdateWritableMappingControls();
+                RefreshPolicyOverrideInfoBar();
                 draft.LogonScriptCommands = null;
                 var startupCommand = lines.FirstOrDefault();
                 var resurrectingTornDownScript = wasScriptBacked &&

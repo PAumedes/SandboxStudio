@@ -67,10 +67,8 @@
   <data name="RefreshButton.Content" xml:space="preserve"><value>Actualizar</value></data>
   <data name="ImportButton.Content" xml:space="preserve"><value>Importar .wsb</value></data>
   <data name="SessionsButton.Content" xml:space="preserve"><value>Sesiones</value></data>
-  <data name="LanguageButton.Content" xml:space="preserve"><value>Idioma</value></data>
-  <data name="LanguageSystemDefaultItem.Text" xml:space="preserve"><value>Idioma del sistema</value></data>
-  <data name="LanguageEnglishItem.Text" xml:space="preserve"><value>English</value></data>
-  <data name="LanguageSpanishItem.Text" xml:space="preserve"><value>Español</value></data>
+  <data name="SettingsButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Configuración</value></data>
+  <data name="SettingsButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Configuración</value></data>
   <data name="NewProfileText.Text" xml:space="preserve"><value>Nuevo perfil</value></data>
   <data name="SandboxStatusInfoBar.Title" xml:space="preserve"><value>Windows Sandbox no detectado</value></data>
   <data name="SandboxStatusInfoBar.Message" xml:space="preserve"><value>Windows Sandbox no está habilitado en este equipo. Puedes crear perfiles, pero iniciarlos requiere Windows Sandbox.</value></data>
@@ -81,6 +79,16 @@
   <data name="CardNetworkingEnabled" xml:space="preserve"><value>Red activada</value></data>
   <data name="CardNetworkingDisabled" xml:space="preserve"><value>Red desactivada</value></data>
   <data name="CardNetworkingDefault" xml:space="preserve"><value>Red: predeterminada</value></data>
+  <data name="CardGpuEnabled" xml:space="preserve"><value>GPU activada</value></data>
+  <data name="CardGpuDisabled" xml:space="preserve"><value>GPU desactivada</value></data>
+  <data name="CardGpuDefault" xml:space="preserve"><value>GPU: predeterminada</value></data>
+  <data name="CardMemoryGb" xml:space="preserve"><value>Memoria: {0} GB</value></data>
+  <data name="CardMemoryMb" xml:space="preserve"><value>Memoria: {0} MB</value></data>
+  <data name="CardMemoryDefault" xml:space="preserve"><value>RAM: predeterminada</value></data>
+  <data name="CardMappedFolders" xml:space="preserve"><value>Carpetas: {0}</value></data>
+  <data name="EmptyStateTitle.Text" xml:space="preserve"><value>Aún no hay perfiles</value></data>
+  <data name="EmptyStateMessage.Text" xml:space="preserve"><value>Crea un nuevo perfil para empezar a trabajar con SandboxStudio.</value></data>
+  <data name="EmptyStateNewProfileButton.Content" xml:space="preserve"><value>Nuevo perfil</value></data>
   <data name="ProfileMoreButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Más opciones</value></data>
   <data name="ProfileMoreButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Más opciones</value></data>
   <data name="EditProfileMenuItem.Text" xml:space="preserve"><value>Editar perfil</value></data>
@@ -99,6 +107,7 @@
   <data name="StatusDuplicateError" xml:space="preserve"><value>Error al duplicar: {0}</value></data>
   <data name="StatusDeleteError" xml:space="preserve"><value>Error al eliminar: {0}</value></data>
   <data name="StatusExportError" xml:space="preserve"><value>Error al exportar: {0}</value></data>
+  <data name="StatusSessionsError" xml:space="preserve"><value>Error de sesiones: {0}</value></data>
   <data name="StatusImportFailed" xml:space="preserve"><value>Error al importar: {0}</value></data>
   <data name="DuplicateNotFound" xml:space="preserve"><value>No se pudo duplicar '{0}': el perfil ya no existe.</value></data>
   <data name="DuplicateSuccess" xml:space="preserve"><value>'{0}' duplicado como '{1}'.</value></data>
@@ -113,9 +122,12 @@
   <data name="ImportSuccess" xml:space="preserve"><value>'{0}' importado desde {1}.</value></data>
   <data name="ImportSuccessWithNotes" xml:space="preserve"><value>'{0}' importado con {1}: {2}</value></data>
   <data name="StatusSettingsSaveError" xml:space="preserve"><value>No se pudieron guardar los ajustes: {0}</value></data>
+  <data name="StatusSettingsError" xml:space="preserve"><value>Error de ajustes: {0}</value></data>
+  <data name="StatusQuickStartError" xml:space="preserve"><value>Error de la guía rápida: {0}</value></data>
 
   <!-- MainViewModel -->
   <data name="SandboxStatusReady" xml:space="preserve"><value>Motor de Windows Sandbox listo</value></data>
+  <data name="SandboxStatusRestricted" xml:space="preserve"><value>Motor de Windows Sandbox listo; algunas características están restringidas por directiva del host</value></data>
   <data name="SandboxStatusEditionRequired" xml:space="preserve"><value>Windows Sandbox requiere una edición Pro, Enterprise o Education</value></data>
   <data name="SandboxStatusVirtDisabled" xml:space="preserve"><value>La virtualización de hardware está deshabilitada o no disponible</value></data>
   <data name="SandboxStatusUnavailable" xml:space="preserve"><value>Motor de Windows Sandbox no disponible</value></data>
@@ -130,8 +142,6 @@
   <data name="StatusProfilesLoadError" xml:space="preserve"><value>Error al cargar los perfiles: {0}</value></data>
   <data name="NewProfileDefaultName" xml:space="preserve"><value>Nuevo espacio aislado {0}</value></data>
   <data name="NewProfileDefaultDescription" xml:space="preserve"><value>Configuración personalizada de espacio aislado.</value></data>
-  <data name="StatusProfileCreated" xml:space="preserve"><value>Perfil '{0}' creado.</value></data>
-  <data name="StatusProfileCreateError" xml:space="preserve"><value>Error al crear el perfil: {0}</value></data>
   <data name="StatusLaunching" xml:space="preserve"><value>Iniciando '{0}'...</value></data>
   <data name="LaunchSessionNote" xml:space="preserve"><value> (sesión {0} — consulta Sesiones)</value><comment>Leading space is load-bearing — it separates this note from the preceding sentence inside StatusLaunchSuccess/StatusLaunchPolicyOverrides. "consulta Sesiones" refers to the Sessions toolbar button label (SessionsButton.Content) and must stay consistent with it.</comment></data>
   <data name="StatusLaunchSuccess" xml:space="preserve"><value>'{0}' iniciado correctamente.{1}</value></data>
@@ -158,12 +168,10 @@
   <data name="PrinterComboBox.Header" xml:space="preserve"><value>Uso compartido de impresoras</value></data>
   <data name="MemoryTextBox.Header" xml:space="preserve"><value>Memoria (MB)</value></data>
   <data name="MemoryTextBox.PlaceholderText" xml:space="preserve"><value>Opcional</value></data>
-  <data name="DevicesHeading.Text" xml:space="preserve"><value>Dispositivos y seguridad</value></data>
   <data name="DevicesCaption.Text" xml:space="preserve"><value>Habilitar dispositivos del host, el portapapeles o las impresoras aumenta el uso compartido con el host.</value></data>
   <data name="StartupCommandTextBox.Header" xml:space="preserve"><value>Comando de inicio (se ejecuta dentro del espacio aislado al iniciar sesión)</value></data>
   <data name="StartupCommandTextBox.PlaceholderText" xml:space="preserve"><value>Opcional</value></data>
   <data name="ScriptModeCheckBox.Content" xml:space="preserve"><value>Empaquetar como script: cada línea se ejecuta en orden desde una carpeta asignada de solo lectura</value></data>
-  <data name="MappedFoldersHeading.Text" xml:space="preserve"><value>Carpetas asignadas</value></data>
   <data name="MappedFoldersCaption.Text" xml:space="preserve"><value>Las carpetas asignadas comparten datos del host con Windows Sandbox. Manténlas de solo lectura salvo que el acceso de escritura sea necesario.</value></data>
   <data name="HostFolderTextBox.Header" xml:space="preserve"><value>Carpeta del host</value></data>
   <data name="MissingHostFolderText.Text" xml:space="preserve"><value>Esta carpeta del host no existe. Es posible que Windows Sandbox no pueda iniciarse.</value></data>
@@ -199,6 +207,38 @@
   <data name="ValidationNameRequired" xml:space="preserve"><value>Se requiere un nombre de perfil.</value></data>
   <data name="ValidationNameTooLong" xml:space="preserve"><value>El nombre del perfil no puede superar los 120 caracteres.</value></data>
   <data name="ValidationDescTooLong" xml:space="preserve"><value>La descripción del perfil no puede superar los 500 caracteres.</value></data>
+
+  <!-- EditProfileDialog tabs -->
+  <data name="EditTabGeneral.Header" xml:space="preserve"><value>Principal</value></data>
+  <data name="EditTabSharing.Header" xml:space="preserve"><value>Uso compartido</value></data>
+  <data name="EditTabFolders.Header" xml:space="preserve"><value>Carpetas asignadas</value></data>
+  <data name="EditTabStartup.Header" xml:space="preserve"><value>Inicio</value></data>
+
+  <!-- SettingsDialog.xaml -->
+  <data name="SettingsDialog.Title" xml:space="preserve"><value>Configuración</value></data>
+  <data name="SettingsDialog.PrimaryButtonText" xml:space="preserve"><value>Listo</value></data>
+  <data name="ThemeComboBox.Header" xml:space="preserve"><value>Tema</value></data>
+  <data name="ThemeSystemItem.Content" xml:space="preserve"><value>Usar configuración del sistema</value></data>
+  <data name="ThemeLightItem.Content" xml:space="preserve"><value>Claro</value></data>
+  <data name="ThemeDarkItem.Content" xml:space="preserve"><value>Oscuro</value></data>
+  <data name="LanguageComboBox.Header" xml:space="preserve"><value>Idioma</value></data>
+  <data name="LanguageSystemComboItem.Content" xml:space="preserve"><value>Idioma del sistema</value></data>
+  <data name="LanguageEnglishComboItem.Content" xml:space="preserve"><value>English</value></data>
+  <data name="LanguageSpanishComboItem.Content" xml:space="preserve"><value>Español</value></data>
+  <data name="LanguageRestartHint.Text" xml:space="preserve"><value>Reinicia SandboxStudio para aplicar el cambio de idioma.</value></data>
+  <data name="ShowQuickStartButton.Content" xml:space="preserve"><value>Mostrar guía de inicio rápido</value></data>
+  <data name="AboutDescription.Text" xml:space="preserve"><value>Un administrador de perfiles para archivos de configuración de Windows Sandbox.</value></data>
+  <data name="AboutVersionFormat" xml:space="preserve"><value>Versión {0}</value></data>
+  <data name="AboutProjectLink.Content" xml:space="preserve"><value>Repositorio de GitHub</value></data>
+
+  <!-- QuickStartDialog.xaml -->
+  <data name="QuickStartDialog.Title" xml:space="preserve"><value>Bienvenido a SandboxStudio</value></data>
+  <data name="QuickStartIntro.Text" xml:space="preserve"><value>SandboxStudio administra perfiles de Windows Sandbox: configuraciones reutilizables que inicias con un clic.</value></data>
+  <data name="QuickStartStep1.Text" xml:space="preserve"><value>Crea un perfil con el botón Nuevo perfil: elige un nombre, la red, la GPU y la memoria.</value></data>
+  <data name="QuickStartStep2.Text" xml:space="preserve"><value>Comparte solo lo necesario: las carpetas asignadas y el acceso a dispositivos están desactivados hasta que los habilites.</value></data>
+  <data name="QuickStartStep3.Text" xml:space="preserve"><value>Pulsa Iniciar en la tarjeta para arrancar el espacio aislado. Todo su contenido se descarta al cerrarlo.</value></data>
+  <data name="QuickStartDialog.PrimaryButtonText" xml:space="preserve"><value>Comenzar</value></data>
+  <data name="QuickStartDontShowCheckBox.Content" xml:space="preserve"><value>No mostrar de nuevo</value></data>
 
   <!-- SessionsDialog.xaml -->
   <data name="SessionsDialog.Title" xml:space="preserve"><value>Sesiones de espacio aislado</value></data>

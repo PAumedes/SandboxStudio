@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using SandboxStudio.Core.Capabilities;
 using SandboxStudio.Core.Execution;
-using SandboxStudio.Core.Presets;
 using SandboxStudio.Core.Scripts;
 using SandboxStudio.Core.Serialization;
 using SandboxStudio.Core.Sessions;
@@ -35,19 +34,33 @@ public sealed partial class App : Application
         // Must precede InitializeComponent: PrimaryLanguageOverride only affects
         // resource contexts created after it is set. The stored tag is user-editable
         // file content, so ignore values that are malformed or not among the
-        // manifest languages instead of letting the setter throw.
+        // supported languages instead of letting the setter throw.
+        // (ManifestLanguages cannot gate this: it is empty for unpackaged apps.)
         var storedTag = new JsonAppSettingsStore().Load().LanguageTag;
-        if (!string.IsNullOrEmpty(storedTag) &&
-            Microsoft.Windows.Globalization.ApplicationLanguages.ManifestLanguages
-                .Any(language => string.Equals(language, storedTag, StringComparison.OrdinalIgnoreCase)))
+        if (Localizer.IsSupportedLanguage(storedTag))
         {
             try
             {
                 Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = storedTag;
             }
-            catch (ArgumentException)
+            catch (Exception ex) when (ex is ArgumentException or System.Runtime.InteropServices.COMException)
             {
-                // Malformed tag survived the manifest check; fall back to OS language.
+                // The setter rejected the tag; fall back to the OS language.
+            }
+        }
+        else if (AppDistribution.IsPackaged)
+        {
+            // On packaged builds the WASDK setter delegates to the inbox API and
+            // that override persists between sessions; clear a stale one so
+            // "System default" actually takes effect after a restart.
+            try
+            {
+                Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = string.Empty;
+            }
+            catch (Exception ex) when (ex is ArgumentException or System.Runtime.InteropServices.COMException)
+            {
+                // Clearing failed; a stale override only delays "System default"
+                // until it can be cleared on a later launch.
             }
         }
 
@@ -65,7 +78,6 @@ public sealed partial class App : Application
         services.AddSingleton<ProfileDuplicationService>();
         services.AddSingleton<ILogonScriptService, LogonScriptService>();
         services.AddSingleton<IAppSettingsStore, JsonAppSettingsStore>();
-        services.AddSingleton<CuratedPresets>();
         services.AddSingleton<IProfileRepository, JsonProfileRepository>();
         services.AddSingleton<ISandboxLauncher, SandboxLauncher>();
         services.AddSingleton<IHostCapabilities, HostCapabilities>();
